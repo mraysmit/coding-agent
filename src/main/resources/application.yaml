@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: codingagent
+  ai:
+    openai-sdk:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+      base-url: https://api.openai.com/v1
+  main:
+    lazy-initialization: false

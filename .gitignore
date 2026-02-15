@@ -1,0 +1,71 @@
+
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+git ls-files | grep -i log
+### Mac OS ###
+.DS_Store
+
+### Log files ###
+*.log
+logs/
+*.log.*
+log/
+*.out
+*.err
+application*.log
+spring*.log
+*.log.gz
+*.log.zip
+/logs/**
+**/logs/**
+
+### Test output files (use target/test-logs/ for timestamped audit trail) ###
+test-logs/
+*-output.txt
+*-output-*.txt
+test-suite-output*.txt
+compile-errors.txt
+test-markers-output.txt
+test-with-markers.txt
+# Add these case variations
+*.LOG
+*.Log
+Logs/
+LOGS/
+.idea/AugmentWebviewStateStore.xml
+.history*
+.idea/statistic.xml
+apex-core/apex-data-sync/reports/
