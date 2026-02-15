@@ -9,10 +9,13 @@ import dev.mars.codingagent.tools.ApexExecuteTool;
 import dev.mars.codingagent.tools.ApexExpectationTool;
 import dev.mars.codingagent.tools.ApexSyntaxTool;
 import dev.mars.codingagent.tools.ApexExampleRetrievalTool;
+import dev.mars.codingagent.orchestration.ApexGenerateCommand;
+import dev.mars.codingagent.orchestration.ApexGenerationService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallAdvisor;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,6 +23,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -31,12 +35,26 @@ public class Application {
 	}
 
 	@Bean
-	ChatClient chatClient(ChatClient.Builder builder) {
-		return builder
+	ApexGenerationService apexGenerationService(ChatClient.Builder builder) {
+		return ApexGenerationService.builder()
+				.chatClientBuilder(builder)
+				.outputDir(Path.of("generated", "apex"))
+				.maxAttempts(3)
+				.build();
+	}
+
+	@Bean
+	ChatClient chatClient(ChatClient.Builder builder, ApexGenerationService apexGenerationService) {
+		return builder.clone()
 				.defaultSystem("""
                     You are a helpful coding assistant. You have access to tools
                     for reading files, searching code, running shell commands,
                     and editing files. Use them to help the user with their codebase.
+
+                    You also have access to APEX rules tools for validating, executing,
+                    and generating APEX YAML business rule configurations. When the user
+                    asks to create or generate APEX rules, use the GenerateApexRules tool
+                    which runs the full generation pipeline.
 
                     Current directory: %s
                     Operating system: %s
@@ -54,7 +72,8 @@ public class Application {
 						ApexExecuteTool.builder().build(),
 						ApexExpectationTool.builder().build(),
 						ApexSyntaxTool.builder().build(),
-						ApexExampleRetrievalTool.builder().build()
+						ApexExampleRetrievalTool.builder().build(),
+						new ApexGenerateCommand(apexGenerationService)
 				)
 				.defaultAdvisors(
 						ToolCallAdvisor.builder().conversationHistoryEnabled(false).build(),
@@ -83,11 +102,12 @@ public class Application {
 			}
 			String input = scanner.nextLine();
 			if ("exit".equalsIgnoreCase(input.trim())) break;
+			if (input.isBlank()) continue;
 
 			String response = chatClient.prompt(input)
 						.toolContext(Map.of("workingDir", System.getProperty("user.dir")))
 						.call().content();
-			out.println("\n" + response);
+			out.println("\n" + (response != null ? response : "[No response from model]"));
 		}
 	}
 }

@@ -110,8 +110,10 @@ public class ApexExampleRetrievalTool {
         for (int i = 0; i < limit; i++) {
             ScoredEntry se = scored.get(i);
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("path", se.entry.get("path"));
-            item.put("absolutePath", apexProjectRoot.resolve(se.entry.get("path").toString()).toString());
+            Object pathObj = se.entry.get("path");
+            String pathStr = pathObj != null ? pathObj.toString() : "unknown";
+            item.put("path", pathStr);
+            item.put("absolutePath", apexProjectRoot.resolve(pathStr).toString());
             item.put("metadataType", se.entry.get("metadataType"));
             item.put("features", se.entry.get("features"));
             item.put("spelPatterns", se.entry.get("spelPatterns"));

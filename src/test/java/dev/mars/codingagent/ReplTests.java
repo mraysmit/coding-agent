@@ -61,4 +61,36 @@ class ReplTests {
 		assertThat(output.toString()).contains("No interactive terminal detected");
 		verify(chatClient, never()).prompt(anyString());
 	}
+
+	@Test
+	void blankInputIsSkippedWithoutCallingModel() {
+		ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
+		when(chatClient.prompt(anyString()).toolContext(any(Map.class)).call().content())
+				.thenReturn("response");
+		clearInvocations(chatClient);
+
+		String input = "   \n\nexit\n";
+		Scanner scanner = new Scanner(new ByteArrayInputStream(input.getBytes()));
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+		Application.runRepl(chatClient, scanner, new PrintStream(output));
+
+		verify(chatClient, never()).prompt(anyString());
+	}
+
+	@Test
+	void nullResponseFromModelIsHandledGracefully() {
+		ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
+		when(chatClient.prompt(anyString()).toolContext(any(Map.class)).call().content())
+				.thenReturn(null);
+		clearInvocations(chatClient);
+
+		String input = "hello\nexit\n";
+		Scanner scanner = new Scanner(new ByteArrayInputStream(input.getBytes()));
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+		Application.runRepl(chatClient, scanner, new PrintStream(output));
+
+		assertThat(output.toString()).contains("[No response from model]");
+	}
 }

@@ -148,11 +148,13 @@ public class ApexExpectationTool {
             return;
         }
 
-        // Check failureMessages for the ruleId
+        // Check failureMessages for the ruleId (word-boundary match to avoid false positives)
         boolean foundInFailures = false;
         if (actual.has("failureMessages")) {
+            java.util.regex.Pattern rulePattern = java.util.regex.Pattern.compile(
+                    "\\b" + java.util.regex.Pattern.quote(ruleId) + "\\b");
             for (JsonNode msg : actual.get("failureMessages")) {
-                if (msg.asText().contains(ruleId)) {
+                if (rulePattern.matcher(msg.asText()).find()) {
                     foundInFailures = true;
                     break;
                 }
@@ -316,7 +318,7 @@ public class ApexExpectationTool {
     private boolean valuesEqual(JsonNode actual, JsonNode expected) {
         if (actual == null || expected == null) return actual == expected;
         if (actual.isNumber() && expected.isNumber()) {
-            return actual.asDouble() == expected.asDouble();
+            return Double.compare(actual.asDouble(), expected.asDouble()) == 0;
         }
         return actual.asText().equals(expected.asText());
     }

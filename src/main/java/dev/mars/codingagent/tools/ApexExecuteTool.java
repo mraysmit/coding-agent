@@ -100,7 +100,7 @@ public class ApexExecuteTool {
             result.put("success", false);
             result.put("error", "Invalid JSON input: " + e.getMessage());
             result.put("errorClassification", List.of(Map.of(
-                    "errorCode", "E_SYNTAX_YAML",
+                    "errorCode", "E_SYNTAX_JSON",
                     "message", "Failed to parse JSON facts: " + e.getMessage()
             )));
         } catch (Exception e) {
