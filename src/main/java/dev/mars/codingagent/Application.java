@@ -1,4 +1,4 @@
-package dev.mark.codingagent;
+package dev.mars.codingagent;
 
 import org.springaicommunity.agent.tools.FileSystemTools;
 import org.springaicommunity.agent.tools.GlobTool;

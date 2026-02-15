@@ -1,4 +1,4 @@
-package dev.mark.codingagent;
+package dev.mars.codingagent;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
