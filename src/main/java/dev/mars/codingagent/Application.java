@@ -4,6 +4,11 @@ import org.springaicommunity.agent.tools.FileSystemTools;
 import org.springaicommunity.agent.tools.GlobTool;
 import org.springaicommunity.agent.tools.GrepTool;
 import org.springaicommunity.agent.tools.ShellTools;
+import dev.mars.codingagent.tools.ApexCompileTool;
+import dev.mars.codingagent.tools.ApexExecuteTool;
+import dev.mars.codingagent.tools.ApexExpectationTool;
+import dev.mars.codingagent.tools.ApexSyntaxTool;
+import dev.mars.codingagent.tools.ApexExampleRetrievalTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallAdvisor;
@@ -44,7 +49,12 @@ public class Application {
 						FileSystemTools.builder().build(),
 						GrepTool.builder().build(),
 						GlobTool.builder().build(),
-						ShellTools.builder().build()
+						ShellTools.builder().build(),
+						ApexCompileTool.builder().build(),
+						ApexExecuteTool.builder().build(),
+						ApexExpectationTool.builder().build(),
+						ApexSyntaxTool.builder().build(),
+						ApexExampleRetrievalTool.builder().build()
 				)
 				.defaultAdvisors(
 						ToolCallAdvisor.builder().conversationHistoryEnabled(false).build(),

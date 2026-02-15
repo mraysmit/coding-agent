@@ -1,0 +1,371 @@
+# APEX YAML Condensed Syntax Reference
+# Cross-referenced from ApexYamlLexicalValidator constants + APEX_YAML_REFERENCE.md
+# Version: 1.1 | Source APEX Version: 2.4
+# This file is loaded into the agent system prompt for grounding.
+# Token budget target: < 3,000 tokens
+
+# ============================================================
+# 1. REQUIRED METADATA (all document types)
+# ============================================================
+required-metadata-fields:
+  - id            # unique identifier string
+  - name          # human-readable name
+  - version       # format: X.Y or X.Y.Z (regex: \d+\.\d+(\.\d+)?)
+  - description
+  - type          # one of valid-document-types below
+
+# ============================================================
+# 2. VALID DOCUMENT TYPES
+# ============================================================
+# Enforced by ApexYamlLexicalValidator:
+valid-document-types:
+  - rule-config
+  - enrichment
+  - dataset
+  - scenario
+  - scenario-registry
+  - rule-chain
+  - external-data-config
+  - pipeline-config
+# Documented but NOT in validator (use with caution):
+#  - component       # grouping of multiple config files
+#  - bootstrap       # has TYPE_REQUIRED_SECTIONS but not in VALID_DOCUMENT_TYPES
+
+# ============================================================
+# 3. TYPE-SPECIFIC REQUIRED METADATA FIELDS
+#    (in addition to the 5 common required fields)
+# ============================================================
+type-specific-required-metadata:
+  rule-config:          [author]
+  enrichment:           [author]
+  dataset:              [source]
+  scenario:             [business-domain, owner]
+  scenario-registry:    [created-by]
+  rule-chain:           [author]
+  external-data-config: [author]
+  pipeline-config:      [author]
+
+# ============================================================
+# 4. TYPE-SPECIFIC REQUIRED BODY SECTIONS
+#    (at least one of these sections must be present)
+# ============================================================
+type-required-sections:
+  rule-config:          [rules, enrichments]        # at least one
+  enrichment:           [enrichments]
+  dataset:              [data]
+  scenario:             [scenario, data-types, rule-configurations]
+  bootstrap:            [bootstrap, data-sources]   # NOTE: type "bootstrap" not in VALID_DOCUMENT_TYPES
+  rule-chain:           [rule-chains]
+  external-data-config: [dataSources, configuration]
+  pipeline-config:      [pipeline, data-sources, data-sinks]
+  # scenario-registry: no entry in validator (should have [scenarios])
+  # component: no entry in validator (should have [rule-configurations, enrichment-refs, component-refs, config-files])
+
+# ============================================================
+# 5. RULE STRUCTURE
+# ============================================================
+rule-fields:
+  required:
+    - id          # unique rule identifier
+    - condition   # SpEL expression (prefix fields with #)
+    - message     # human-readable message (supports {{#expr}} templates)
+    - severity    # one of: CRITICAL, ERROR, WARNING, INFO
+                  # NOTE: validator does NOT check severity values
+  optional:
+    - name
+    - priority       # integer, lower = higher priority
+    - enabled        # boolean, default true
+    - result-field   # store boolean result for downstream rules
+    - no-match-message
+    - category
+    - default-value  # used in error recovery
+
+# ============================================================
+# 6. ENRICHMENT TYPES
+# ============================================================
+enrichment-types:
+  lookup-enrichment:
+    required: [id, type]
+    lookup-config:         # sub-object
+      required: [lookup-key, lookup-dataset]
+      lookup-dataset:
+        required: [type, key-field]
+        type-values: [inline, database, file-system, rest-api]
+        inline-extras: [data]    # inline data array
+    field-mappings: []     # required: list of {source-field, target-field}
+    optional: [condition, result-field, priority, enabled, yaml-data-file]
+
+  calculation-enrichment:
+    required: [id, type]
+    calculation-config:    # sub-object
+      required: [expression, result-field]
+    field-mappings: []     # optional
+    optional: [condition, priority, enabled]
+
+  field-enrichment:
+    required: [id, type]
+    at-least-one: [field-mappings, conditional-mappings]
+    optional: [condition, priority, enabled]
+
+  conditional-mapping-enrichment:
+    required: [id, type, target-field, mapping-rules]
+    mapping-rule-fields: [id, priority, conditions, mapping]
+    conditions-fields: [operator, rules]      # rules = list of SpEL conditions
+    mapping-fields: [type, expression]        # type: "direct" or "lookup"
+    execution-settings:
+      stop-on-first-match: true               # default
+      log-matched-rule: false                  # default
+      validate-result: false                   # default
+
+  common-optional:
+    - condition        # SpEL expression
+    - result-field     # boolean success flag
+    - priority         # execution priority
+    - enabled          # boolean, default true
+    - success-code     # code set on success
+    - error-code       # code set on failure
+    - map-to-field     # target field(s)
+
+  field-mapping-fields:
+    source-field: "optional, supports SpEL with # prefix"
+    target-field: "required"
+    expression: "optional SpEL transformation"
+    required: "optional boolean, default false"
+    default-value: "optional fallback"
+
+# ============================================================
+# 7. RULE GROUP STRUCTURE
+# ============================================================
+rule-group-fields:
+  required:
+    - id
+    - name
+    - operator           # AND or OR
+  one-of:                # must have one, not both
+    - rule-ids           # simple list of rule IDs
+    - rule-references    # structured: [{rule-id, sequence, enabled, override-priority}]
+  optional:
+    - description
+    - category           # default: "default"
+    - priority           # default: 100
+    - enabled            # default: true
+    - stop-on-first-failure  # default: false
+    - parallel-execution     # default: false
+    - debug-mode             # default: false
+    - error-handling         # fail-fast | continue-on-error | skip-on-error
+    - rule-group-references  # references to other groups
+
+# ============================================================
+# 8. ENRICHMENT GROUP STRUCTURE
+# ============================================================
+enrichment-group-fields:
+  required: [id, operator]    # operator: AND or OR
+  optional:
+    - enrichment-ids
+    - enrichment-group-references
+    - enrichment-group          # singular alias for enrichment-group-references
+    - stop-on-first-failure     # default: true (differs from rule-groups!)
+    - parallel-execution        # default: false; disables short-circuiting
+    - error-handling            # fail-fast | continue-on-error | skip-on-error
+
+# ============================================================
+# 9. SCENARIO STRUCTURE
+# ============================================================
+scenario-fields:
+  scenario-section:
+    - scenario-id
+    - classification-rules   # SpEL conditions for routing
+    - processing-stages      # ordered list
+  processing-stage:
+    - stage-name
+    - config-file
+    - execution-order        # integer
+    - failure-policy         # terminate | continue-with-warnings | flag-for-review
+    - depends-on             # list of stage names
+    - condition              # SpEL expression
+
+# ============================================================
+# 10. SCENARIO REGISTRY
+# ============================================================
+scenario-registry-fields:
+  type: "scenario-registry"
+  required-metadata: [created-by]
+  scenarios-list-entry:
+    - config-file
+    - priority
+    - enabled
+
+# ============================================================
+# 11. COMPONENT STRUCTURE (doc-only, not in validator)
+# ============================================================
+component-fields:
+  type: "component"
+  note: "Described in reference doc but absent from validator constants"
+  sections:
+    - rule-configurations    # list of {file, execution-order, failure-policy}
+    - enrichment-refs        # list of {file, execution-order, failure-policy}
+    - component-refs         # nested components
+    - config-files           # generic config file references
+  nesting-limits:
+    ok: "1-2 levels"
+    warning: "3-5 levels"
+    error: "6+ levels"
+
+# ============================================================
+# 12. TRANSFORMATION STRUCTURE
+# ============================================================
+transformation-types:
+  expression-based:
+    fields: [expression, result-field]   # SpEL → output field
+  conditional-transformation:
+    fields:
+      - condition            # SpEL
+      - actions-true         # modern syntax (takes precedence over actions)
+      - actions-false        # modern syntax (alias: else-actions)
+      - actions              # legacy syntax (= actions-true)
+      - else-actions         # legacy syntax (= actions-false)
+    nesting: "actions can contain nested conditional-transformation objects"
+  set-field:
+    fields: [field, value]   # used as action inside conditional transformations
+
+# ============================================================
+# 13. DATA SOURCE STRUCTURE
+# ============================================================
+data-source-fields:
+  connection:
+    types: [database, rest-api, file-system, cache]
+    database: [url, username, password, driver-class-name]
+    rest-api: [base-url, headers, timeout]
+    file-system: [base-path, format]
+  queries:       # for database (map or array format)
+  endpoints:     # for rest-api (map or array format)
+  operations:    # for file-system (map or array format)
+  health-check:
+    - enabled
+    - interval
+    - query
+
+# ============================================================
+# 14. ERROR RECOVERY
+# ============================================================
+error-recovery-fields:
+  severity-policies:
+    levels: [CRITICAL, ERROR, WARNING, INFO]
+    strategies:
+      - FAIL_FAST                     # throw exception immediately
+      - CONTINUE_WITH_DEFAULT         # use default/null, continue
+      - RETRY_WITH_SAFE_EXPRESSION    # retry with simplified (future)
+      - SKIP_RULE                     # skip failing rule (future)
+    per-level: [strategy, default-value, max-retries, retry-delay]
+  global:
+    - log-recovery-attempts   # boolean
+    - metrics-enabled         # boolean
+
+  error-handling-values:
+    rule-group-level: [fail-fast, continue-on-error, skip-on-error]
+    pipeline-level: [stop-on-error, continue-on-error]
+    stage-failure-policy: [terminate, continue-with-warnings, flag-for-review]
+
+# ============================================================
+# 15. SpEL SYNTAX RULES
+# ============================================================
+spel-rules:
+  field-reference: "#fieldName"          # always prefix with #
+  nested-field: "#object.property"
+  bracket-notation: "#data['key']"
+  safe-navigation: "#object?.property"
+  ternary: "#x > 0 ? 'yes' : 'no'"
+  class-access: "T(java.lang.Math).abs(#value)"
+  regex-match: "#field.matches('pattern')"
+  collection-check: "#value in {'A', 'B', 'C'}"
+  null-check: "#field != null"
+  string-ops: "#field.toUpperCase(), #field.trim(), #field.length()"
+  context-variables: "#ruleResults['ruleId'], #ruleGroupResults['groupId']"
+  forbidden:
+    - "## (double hash) — lexical validator flags this as error"
+    - "unmatched parentheses"
+    - "unquoted special chars in string comparisons"
+
+# ============================================================
+# 16. CANONICAL TEMPLATES
+# ============================================================
+templates:
+  minimal-rule-config: |
+    metadata:
+      id: "<id>"
+      name: "<name>"
+      version: "1.0"
+      description: "<description>"
+      type: "rule-config"
+      author: "<author>"
+    rules:
+      - id: "<rule-id>"
+        condition: "<SpEL expression>"
+        message: "<message>"
+        severity: "ERROR"
+
+  rule-with-enrichment: |
+    metadata:
+      id: "<id>"
+      name: "<name>"
+      version: "1.0"
+      description: "<description>"
+      type: "rule-config"
+      author: "<author>"
+    enrichments:
+      - id: "<enrichment-id>"
+        type: "calculation-enrichment"
+        calculation-config:
+          expression: "<SpEL>"
+          result-field: "<output-field>"
+    rules:
+      - id: "<rule-id>"
+        condition: "<SpEL using #output-field>"
+        message: "<message>"
+        severity: "ERROR"
+
+  lookup-enrichment-config: |
+    metadata:
+      id: "<id>"
+      name: "<name>"
+      version: "1.0"
+      description: "<description>"
+      type: "rule-config"
+      author: "<author>"
+    enrichments:
+      - id: "<enrichment-id>"
+        type: "lookup-enrichment"
+        lookup-config:
+          lookup-key: "#<field>"
+          lookup-dataset:
+            type: "inline"
+            key-field: "<key>"
+            data:
+              - <key>: "<value1>"
+                <mapped-field>: "<mapped-value1>"
+        field-mappings:
+          - source-field: "<mapped-field>"
+            target-field: "<target>"
+
+  scenario-registry: |
+    metadata:
+      id: "<id>"
+      name: "<name>"
+      version: "1.0"
+      description: "<description>"
+      type: "scenario-registry"
+      created-by: "<author>"
+    scenarios:
+      - config-file: "<path-to-scenario.yaml>"
+        priority: 1
+        enabled: true
+
+# ============================================================
+# 17. KNOWN VALIDATOR GAPS (for agent awareness)
+# ============================================================
+validator-gaps:
+  - "'bootstrap' has TYPE_REQUIRED_SECTIONS but is not in VALID_DOCUMENT_TYPES"
+  - "'component' is described in reference doc but absent from all validator constants"
+  - "'scenario-registry' has no TYPE_REQUIRED_SECTIONS entry (should require 'scenarios')"
+  - "Severity values (CRITICAL/ERROR/WARNING/INFO) are NOT validated by the lexical validator"
+  - "Rule-level 'name' is documented as required but not enforced by validator"
