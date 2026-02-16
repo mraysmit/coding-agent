@@ -8,12 +8,17 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Tool exposed to the REPL ChatClient that delegates to the ApexGenerationService.
  * When the user asks to generate APEX rules, the REPL agent calls this tool,
  * which runs the full generation pipeline.
  */
 public class ApexGenerateCommand {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexGenerateCommand.class);
 
     private final ApexGenerationService generationService;
     private final ObjectMapper objectMapper;
@@ -45,9 +50,14 @@ public class ApexGenerateCommand {
     public String generateApexRules(
             @ToolParam(description = "Business requirements describing what rules to create") String requirements,
             @ToolParam(description = "JSON or text describing the data structure/schema the rules operate on") String dataStructure) {
+        log.info("[GenerateApexRules] Starting generation. requirements={} chars, dataStructure={} chars",
+                requirements.length(), dataStructure.length());
         try {
             GenerationRequest request = GenerationRequest.of(requirements, dataStructure);
+            log.debug("[GenerateApexRules] Created request: {}", request.requestId());
             GenerationResult result = generationService.generate(request);
+            log.info("[GenerateApexRules] Complete. success={}, files={}",
+                    result.success(), result.files().size());
             return formatResult(result);
         } catch (Exception e) {
             return toJson(Map.of(
@@ -65,6 +75,7 @@ public class ApexGenerateCommand {
             @ToolParam(description = "Business requirements") String requirements,
             @ToolParam(description = "Data structure (JSON or text)") String dataStructure,
             @ToolParam(description = "Comma-separated hints (e.g. 'use rule-groups, include enrichments')") String hints) {
+        log.info("[GenerateApexRulesWithHints] Starting generation with hints='{}'", hints);
         try {
             List<String> hintList = hints != null
                     ? Arrays.stream(hints.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()

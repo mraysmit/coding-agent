@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Rules Generator</title>
+    <title>APEX AI Rules Generator</title>
     <style>
         :root {
             --bg: #0f1117;
@@ -223,6 +223,30 @@
             background: var(--code-bg);
             border: 1px solid var(--border);
             font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            user-select: none;
+        }
+
+        .validation-chip:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.06);
+        }
+
+        .validation-chip.expanded {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .chip-expand-icon {
+            margin-left: auto;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .validation-chip.expanded .chip-expand-icon {
+            transform: rotate(180deg);
         }
 
         .chip-icon {
@@ -232,6 +256,90 @@
         .chip-pass { color: var(--success); }
         .chip-fail { color: var(--error); }
         .chip-unknown { color: var(--text-muted); }
+
+        .stage-detail-panel {
+            display: none;
+            grid-column: 1 / -1;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: -0.25rem;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        .stage-detail-panel.visible {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stage-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .stage-detail-header .status-badge {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .status-badge.pass {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.fail {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .stage-detail-content {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            color: var(--text);
+            white-space: pre-wrap;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            word-break: break-word;
+        }
+
+        .stage-detail-content .detail-status-line {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stage-detail-content .detail-json {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            margin-top: 0.25rem;
+            overflow-x: auto;
+        }
+
+        .stage-detail-content .detail-section-label {
+            color: var(--primary);
+            font-weight: 600;
+            margin-top: 0.75rem;
+            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+        }
 
         .summary-text {
             background: var(--code-bg);
@@ -323,6 +431,116 @@
             color: var(--primary-hover);
             text-decoration: underline;
         }
+
+        /* Rule Results Table */
+        .rule-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        .rule-results-table th {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary-hover);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .rule-results-table td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .rule-results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rule-results-table tr:hover td {
+            background: rgba(99, 102, 241, 0.04);
+        }
+
+        .rule-result-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .rule-result-badge.match {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .rule-result-badge.no-match {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--text-muted);
+        }
+
+        .rule-result-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .rule-results-wrapper {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .rule-results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-results-summary {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .execution-run-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--primary-hover);
+            padding: 0.4rem 0.75rem;
+            background: rgba(99, 102, 241, 0.06);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .severity-badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+        }
+
+        .severity-badge.info { background: rgba(99, 102, 241, 0.12); color: var(--primary-hover); }
+        .severity-badge.warn { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .severity-badge.error { background: rgba(239, 68, 68, 0.12); color: var(--error); }
+        .severity-badge.critical { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+
+        .toggle-link {
+            font-size: 0.8rem;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        .toggle-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -371,6 +589,12 @@
                 <div class="result-section">
                     <div class="section-title">Validation Results</div>
                     <div class="validation-grid" id="validation-grid"></div>
+                </div>
+
+                <!-- Rule Execution Results -->
+                <div class="result-section" id="rule-results-section" style="display:none;">
+                    <div class="section-title">Rule Execution Results</div>
+                    <div id="rule-results-container"></div>
                 </div>
 
                 <!-- Summary -->
@@ -531,28 +755,64 @@
             // Validation grid
             const grid = document.getElementById('validation-grid');
             const report = data.validationReport || {};
+            const stageDetails = report.stageDetails || {};
             grid.innerHTML = '';
             const checks = [
-                ['Lexical', report.lexicalValid],
-                ['Compilation', report.compilationSuccess],
-                ['Execution', report.executionSuccess],
-                ['Expectations', report.expectationsPass]
+                ['Lexical', report.lexicalValid, 'lexical'],
+                ['Compilation', report.compilationSuccess, 'compilation'],
+                ['Execution', report.executionSuccess, 'execution'],
+                ['Expectations', report.expectationsPass, 'expectation']
             ];
-            for (const [name, val] of checks) {
+            for (const [name, val, key] of checks) {
                 const cls = val === true ? 'chip-pass' : val === false ? 'chip-fail' : 'chip-unknown';
                 const icon = val === true ? '✓' : val === false ? '✗' : '—';
+                const detail = stageDetails[key] || {};
+                const detailText = detail.detail || '';
+                const formattedDetail = formatStageDetail(detailText, name, val);
+                const statusLabel = val === true ? 'PASS' : val === false ? 'FAIL' : 'UNKNOWN';
+                const statusCls = val === true ? 'pass' : 'fail';
+                const panelId = `stage-panel-${key}`;
+
                 grid.innerHTML += `
-                    <div class="validation-chip">
+                    <div class="validation-chip" onclick="toggleStageDetail('${key}')" id="chip-${key}">
                         <span class="chip-icon ${cls}">${icon}</span>
                         <span>${name}</span>
+                        <span class="chip-expand-icon">▼</span>
                     </div>`;
+
+                // Create the detail panel (inserted after the grid via a separate container)
+                const panelHtml = `
+                    <div class="stage-detail-panel" id="${panelId}">
+                        <div class="stage-detail-header">
+                            <span>${name}</span>
+                            <span class="status-badge ${statusCls}">${statusLabel}</span>
+                        </div>
+                        <div class="stage-detail-content">${formattedDetail}</div>
+                    </div>`;
+
+                // Store for after grid render
+                if (!window._stagePanels) window._stagePanels = '';
+                window._stagePanels += panelHtml;
             }
+
+            // Insert stage detail panels after the grid
+            let panelsContainer = document.getElementById('stage-panels-container');
+            if (!panelsContainer) {
+                panelsContainer = document.createElement('div');
+                panelsContainer.id = 'stage-panels-container';
+                grid.parentNode.insertBefore(panelsContainer, grid.nextSibling);
+            }
+            panelsContainer.innerHTML = window._stagePanels || '';
+            window._stagePanels = '';
 
             // Summary
             if (data.summary) {
                 document.getElementById('summary-section').style.display = 'block';
                 document.getElementById('summary-text').textContent = data.summary;
             }
+
+            // Rule Execution Results
+            renderRuleResults(report.ruleResults || []);
 
             // Files
             const filesContainer = document.getElementById('files-container');
@@ -584,6 +844,206 @@
             if (!str) return '';
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function formatStageDetail(rawText, stageName, passed) {
+            if (!rawText || rawText.trim() === '') {
+                return `<div class="detail-status-line">${escapeHtml(stageName)}: ${passed ? 'PASS' : 'FAIL'}</div><div>No detailed output available for this stage.</div>`;
+            }
+
+            // Try to find and format JSON blocks within the text
+            const parts = [];
+            let remaining = rawText;
+
+            // Extract "Status: PASS/FAIL" line if present
+            const statusMatch = remaining.match(/^Status:\s*(PASS|FAIL)\s*$/m);
+            if (statusMatch) {
+                const statusColor = statusMatch[1] === 'PASS' ? 'var(--success)' : 'var(--error)';
+                parts.push(`<div class="detail-status-line" style="color: ${statusColor}">Status: ${statusMatch[1]}</div>`);
+                remaining = remaining.replace(statusMatch[0], '').trim();
+            }
+
+            // Try to find JSON blocks (objects or arrays) in the remaining text
+            const jsonRegex = /(\{[\s\S]*?\}(?=\s*$|\s*\n[^{\s]|\s*\n\s*$)|\[[\s\S]*?\](?=\s*$|\s*\n[^[\s]|\s*\n\s*$))/g;
+            let hasJson = false;
+
+            // Split into lines and process
+            const lines = remaining.split('\n');
+            let currentText = [];
+            let inJson = false;
+            let jsonBuffer = '';
+            let braceCount = 0;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                if (!inJson && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+                    // Flush any accumulated text
+                    if (currentText.length > 0) {
+                        parts.push(`<div>${escapeHtml(currentText.join('\n'))}</div>`);
+                        currentText = [];
+                    }
+                    inJson = true;
+                    jsonBuffer = '';
+                    braceCount = 0;
+                }
+
+                if (inJson) {
+                    jsonBuffer += (jsonBuffer ? '\n' : '') + line;
+                    for (const ch of trimmed) {
+                        if (ch === '{' || ch === '[') braceCount++;
+                        if (ch === '}' || ch === ']') braceCount--;
+                    }
+                    if (braceCount <= 0) {
+                        inJson = false;
+                        try {
+                            const parsed = JSON.parse(jsonBuffer);
+                            const formatted = JSON.stringify(parsed, null, 2);
+                            parts.push(`<div class="detail-json">${escapeHtml(formatted)}</div>`);
+                            hasJson = true;
+                        } catch {
+                            // Not valid JSON, render as text
+                            parts.push(`<div>${escapeHtml(jsonBuffer)}</div>`);
+                        }
+                        jsonBuffer = '';
+                    }
+                } else {
+                    currentText.push(line);
+                }
+            }
+
+            // Flush remaining text or json buffer
+            if (jsonBuffer) {
+                parts.push(`<div>${escapeHtml(jsonBuffer)}</div>`);
+            }
+            if (currentText.length > 0) {
+                const text = currentText.join('\n').trim();
+                if (text) {
+                    parts.push(`<div>${escapeHtml(text)}</div>`);
+                }
+            }
+
+            return parts.join('') || `<div>${escapeHtml(rawText)}</div>`;
+        }
+
+        function renderRuleResults(ruleResults) {
+            const section = document.getElementById('rule-results-section');
+            const container = document.getElementById('rule-results-container');
+
+            if (!ruleResults || ruleResults.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            container.innerHTML = '';
+
+            for (let runIdx = 0; runIdx < ruleResults.length; runIdx++) {
+                const run = ruleResults[runIdx];
+                const children = run.childResults || [];
+                const overallSuccess = run.success === true;
+                const resultType = run.resultType || 'UNKNOWN';
+                const failureMessages = run.failureMessages || [];
+
+                let html = '<div class="rule-results-wrapper" style="margin-bottom: 0.75rem;">';
+
+                // Run header
+                const runLabel = ruleResults.length > 1
+                    ? `Execution Run ${runIdx + 1} of ${ruleResults.length}`
+                    : 'Execution Run';
+                const overallBadge = overallSuccess
+                    ? '<span class="rule-result-badge match">PASS</span>'
+                    : '<span class="rule-result-badge error">FAIL</span>';
+                html += `<div class="execution-run-label">${escapeHtml(runLabel)} &nbsp; ${overallBadge} &nbsp; <span style="color: var(--text-muted); font-weight: 400;">Result: ${escapeHtml(resultType)}</span></div>`;
+
+                if (children.length > 0) {
+                    html += '<table class="rule-results-table">';
+                    html += '<thead><tr>';
+                    html += '<th>Rule</th><th>Result</th><th>Triggered</th><th>Severity</th><th>Message</th>';
+                    html += '</tr></thead><tbody>';
+
+                    for (const child of children) {
+                        const rName = child.ruleName || child.ruleId || '\u2014';
+                        const rType = (child.resultType || 'UNKNOWN').toUpperCase();
+                        const rTriggered = child.triggered === true;
+                        const severity = (child.severity || 'INFO').toUpperCase();
+                        const message = child.message || '';
+                        const childFailures = child.failureMessages || [];
+
+                        // Result type badge class
+                        let resultCls = 'no-match';
+                        if (rType === 'MATCH') resultCls = 'match';
+                        else if (rType === 'ERROR' || rType === 'ENRICHMENT_FAILURE') resultCls = 'error';
+
+                        // Severity badge class
+                        let sevCls = 'info';
+                        if (severity === 'WARNING' || severity === 'WARN') sevCls = 'warn';
+                        else if (severity === 'ERROR') sevCls = 'error';
+                        else if (severity === 'CRITICAL') sevCls = 'critical';
+
+                        // Triggered indicator
+                        const triggeredIcon = rTriggered
+                            ? '<span style="color: var(--success);">&#x2713;</span>'
+                            : '<span style="color: var(--text-muted);">&#x2013;</span>';
+
+                        // Combine message + failure messages
+                        let msgText = message;
+                        if (childFailures.length > 0) {
+                            msgText = msgText
+                                ? msgText + ' | ' + childFailures.join('; ')
+                                : childFailures.join('; ');
+                        }
+
+                        html += '<tr>';
+                        html += `<td style="font-weight: 500;">${escapeHtml(rName)}</td>`;
+                        html += `<td><span class="rule-result-badge ${resultCls}">${escapeHtml(rType)}</span></td>`;
+                        html += `<td style="text-align: center;">${triggeredIcon}</td>`;
+                        html += `<td><span class="severity-badge ${sevCls}">${escapeHtml(severity)}</span></td>`;
+                        html += `<td style="color: var(--text-muted); font-size: 0.78rem;">${escapeHtml(msgText || '\u2014')}</td>`;
+                        html += '</tr>';
+                    }
+
+                    html += '</tbody></table>';
+                } else {
+                    // No child results - show top-level info
+                    html += '<div style="padding: 0.75rem; font-size: 0.82rem;">';
+                    html += `<div>Overall: ${overallSuccess ? 'PASS' : 'FAIL'} (${escapeHtml(resultType)})</div>`;
+                    if (failureMessages.length > 0) {
+                        html += '<div style="color: var(--error); margin-top: 0.25rem;">'
+                            + escapeHtml(failureMessages.join('; ')) + '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                container.innerHTML += html;
+            }
+
+            // Summary line
+            const totalRuns = ruleResults.length;
+            const passedRuns = ruleResults.filter(r => r.success === true).length;
+            const summaryEl = document.createElement('div');
+            summaryEl.className = 'rule-results-summary';
+            summaryEl.textContent = `${totalRuns} execution run${totalRuns > 1 ? 's' : ''}, ${passedRuns} passed`;
+            container.insertBefore(summaryEl, container.firstChild);
+        }
+
+        function toggleStageDetail(stageKey) {
+            const panel = document.getElementById(`stage-panel-${stageKey}`);
+            const chip = document.getElementById(`chip-${stageKey}`);
+            if (!panel) return;
+
+            const isVisible = panel.classList.contains('visible');
+
+            // Close all panels first
+            document.querySelectorAll('.stage-detail-panel').forEach(p => p.classList.remove('visible'));
+            document.querySelectorAll('.validation-chip').forEach(c => c.classList.remove('expanded'));
+
+            // Toggle the clicked one (if it wasn't already open)
+            if (!isVisible) {
+                panel.classList.add('visible');
+                if (chip) chip.classList.add('expanded');
+            }
         }
     </script>
 </body>

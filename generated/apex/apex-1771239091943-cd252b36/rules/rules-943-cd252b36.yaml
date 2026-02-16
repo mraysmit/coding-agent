@@ -1,0 +1,26 @@
+metadata:
+  id: "discount-rules"
+  name: "Order Discount Rules"
+  version: "1.0"
+  description: "Apply discounts based on order total and customer tier."
+  type: "rule-config"
+  author: "mraysmit"
+
+rules:
+  - id: "discount-10-percent"
+    name: "10% off for orders over $100"
+    condition: "#orderTotal > 100 and #orderTotal <= 500 and #customerTier != 'VIP'"
+    message: "10% discount applied for orders over $100"
+    severity: "INFO"
+
+  - id: "discount-20-percent"
+    name: "20% off for orders over $500"
+    condition: "#orderTotal > 500 and #customerTier != 'VIP'"
+    message: "20% discount applied for orders over $500"
+    severity: "INFO"
+
+  - id: "discount-vip"
+    name: "VIP customer discount"
+    condition: "#customerTier == 'VIP'"
+    message: "VIP customer receives at least 15% discount"
+    severity: "INFO"

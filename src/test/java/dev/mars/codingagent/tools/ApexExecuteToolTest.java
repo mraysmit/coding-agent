@@ -311,4 +311,185 @@ class ApexExecuteToolTest {
         // Should handle gracefully — either error or success=false
         assertThat(json.has("success")).isTrue();
     }
+
+    // ===== Child result fields =====
+
+    @Test
+    void evaluateYaml_childResults_containRuleIdAndName() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "child-fields"
+                  name: "Child Fields"
+                  version: "1.0"
+                  description: "test child result fields"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "age-check"
+                    name: "Age Eligibility"
+                    condition: "#age >= 18"
+                    message: "Must be 18 or older"
+                    severity: "ERROR"
+                """;
+        String facts = "{\"age\": 25}";
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        JsonNode children = json.get("childResults");
+        // Some engine versions may not produce child results for single-rule configs,
+        // but if they do, verify the fields are present
+        if (children != null && children.size() > 0) {
+            JsonNode child = children.get(0);
+            assertThat(child.has("ruleId")).isTrue();
+            assertThat(child.has("ruleName")).isTrue();
+            assertThat(child.has("triggered")).isTrue();
+            assertThat(child.has("message")).isTrue();
+            assertThat(child.has("severity")).isTrue();
+            assertThat(child.has("success")).isTrue();
+            assertThat(child.has("resultType")).isTrue();
+        }
+    }
+
+    // ===== Static result collector (storeResult / drainResults / peekResults) =====
+
+    @Test
+    void drainResults_afterEvaluateYaml_returnsStoredResults() throws Exception {
+        // Clear any leftover results from prior tests on this thread
+        ApexExecuteTool.drainResults();
+
+        String yaml = """
+                metadata:
+                  id: "drain-test"
+                  name: "Drain Test"
+                  version: "1.0"
+                  description: "test drain"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Simple Rule"
+                    condition: "#x > 0"
+                    message: "positive"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"x\": 5}");
+
+        var drained = ApexExecuteTool.drainResults();
+        assertThat(drained).isNotEmpty();
+        assertThat(drained.get(0)).containsKey("success");
+        assertThat(drained.get(0)).containsKey("resultType");
+        assertThat(drained.get(0)).containsKey("childResults");
+    }
+
+    @Test
+    void drainResults_clearesResultsAfterCall() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "drain-clear"
+                  name: "Drain Clear"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"a\": 1}");
+
+        // First drain returns data
+        assertThat(ApexExecuteTool.drainResults()).isNotEmpty();
+        // Second drain returns empty (already cleared)
+        assertThat(ApexExecuteTool.drainResults()).isEmpty();
+    }
+
+    @Test
+    void peekResults_doesNotClear() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "peek-test"
+                  name: "Peek Test"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"a\": 1}");
+
+        // Peek returns data but doesn't clear
+        assertThat(ApexExecuteTool.peekResults()).isNotEmpty();
+        assertThat(ApexExecuteTool.peekResults()).isNotEmpty(); // still there
+
+        // Drain clears it
+        ApexExecuteTool.drainResults();
+        assertThat(ApexExecuteTool.peekResults()).isEmpty();
+    }
+
+    @Test
+    void drainResults_multipleExecutions_accumulatesAll() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "multi-drain"
+                  name: "Multi Drain"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "#x > 0"
+                    message: "positive"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"x\": 1}");
+        tool.evaluateYaml(yaml, "{\"x\": -1}");
+        tool.evaluateYaml(yaml, "{\"x\": 100}");
+
+        var drained = ApexExecuteTool.drainResults();
+        assertThat(drained).hasSize(3);
+    }
+
+    @Test
+    void drainResults_errorExecution_doesNotStoreResult() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "err"
+                  name: "Err"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        // Invalid JSON → error path (storeResult should NOT be called)
+        tool.evaluateYaml(yaml, "invalid-json");
+
+        var drained = ApexExecuteTool.drainResults();
+        // Error path should not store results
+        assertThat(drained).isEmpty();
+    }
 }

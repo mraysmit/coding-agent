@@ -59,8 +59,14 @@ public class ApexGenerationService {
      */
     public GenerationResult generate(GenerationRequest request) {
         log.info("Starting APEX generation for request: {}", request.requestId());
+        log.debug("Request details — requirements length: {}, dataStructure length: {}, hints: {}",
+                request.requirements().length(),
+                request.dataStructure() != null ? request.dataStructure().length() : 0,
+                request.hints());
 
         String userPrompt = buildUserPrompt(request);
+        log.debug("Built user prompt ({} chars): {}...", userPrompt.length(),
+                userPrompt.substring(0, Math.min(300, userPrompt.length())));
         String response = null;
         int attempt = 0;
 
@@ -74,6 +80,8 @@ public class ApexGenerationService {
             try {
                 String promptToSend = attempt == 1 ? userPrompt
                         : buildRetryPrompt(userPrompt, response, attempt);
+                log.debug("Sending prompt ({} chars) to LLM on attempt {}",
+                        promptToSend.length(), attempt);
 
                 response = apexChatClient.prompt(promptToSend)
                         .toolContext(Map.of(
@@ -88,6 +96,10 @@ public class ApexGenerationService {
                     continue;
                 }
 
+                log.debug("Received LLM response ({} chars). Preview: {}...",
+                        response.length(),
+                        response.substring(0, Math.min(500, response.length())));
+
                 // Try to package the output
                 GenerationResult result = outputPackager.packageOutput(
                         request.requestId(), response, attempt);
@@ -95,6 +107,12 @@ public class ApexGenerationService {
                 if (result.success()) {
                     log.info("Generation succeeded on attempt {} for request {}",
                             attempt, request.requestId());
+                    log.debug("Result: {} files generated, validation report: lexical={}, compile={}, exec={}, expectations={}",
+                            result.files().size(),
+                            result.validationReport().lexicalValid(),
+                            result.validationReport().compilationSuccess(),
+                            result.validationReport().executionSuccess(),
+                            result.validationReport().expectationsPass());
                     return result;
                 }
 
@@ -103,6 +121,12 @@ public class ApexGenerationService {
                 if (!result.files().isEmpty()) {
                     log.info("Generation completed with partial success on attempt {} for request {}",
                             attempt, request.requestId());
+                    log.debug("Partial result: {} files, validation: lexical={}, compile={}, exec={}, expectations={}",
+                            result.files().size(),
+                            result.validationReport().lexicalValid(),
+                            result.validationReport().compilationSuccess(),
+                            result.validationReport().executionSuccess(),
+                            result.validationReport().expectationsPass());
                     return result;
                 }
 
@@ -126,6 +150,7 @@ public class ApexGenerationService {
     // ---- Prompt Building ----
 
     private String buildUserPrompt(GenerationRequest request) {
+        log.debug("Building user prompt for request {}", request.requestId());
         StringBuilder sb = new StringBuilder();
         sb.append("## Business Requirements\n\n");
         sb.append(request.requirements()).append("\n\n");
@@ -150,6 +175,8 @@ public class ApexGenerationService {
     }
 
     private String buildRetryPrompt(String originalPrompt, String previousResponse, int attempt) {
+        log.debug("Building retry prompt for attempt {}. Previous response length: {}",
+                attempt, previousResponse != null ? previousResponse.length() : 0);
         return """
                 PREVIOUS ATTEMPT FAILED. This is attempt %d.
                 
@@ -165,7 +192,9 @@ public class ApexGenerationService {
     // ---- System Prompt Loading ----
 
     static String loadSystemPrompt(String requestId) {
+        log.debug("Loading system prompt template for requestId={}", requestId);
         String template = loadPromptTemplate();
+        log.debug("System prompt template loaded ({} chars)", template.length());
         return template
                 .replace("{{workingDir}}", System.getProperty("user.dir"))
                 .replace("{{osName}}", System.getProperty("os.name"))

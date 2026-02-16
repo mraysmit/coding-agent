@@ -53,12 +53,19 @@ public class ApexGenerationController {
      */
     @PostMapping("/generate")
     public ResponseEntity<Map<String, Object>> generate(@RequestBody GenerateRequest request) {
+        log.debug("POST /api/apex/generate — requirements='{}', dataStructure length={}, hints='{}'",
+                request.requirements() != null ? request.requirements().substring(0, Math.min(100, request.requirements().length())) : "null",
+                request.dataStructure() != null ? request.dataStructure().length() : 0,
+                request.hints());
+
         // Input validation
         if (request.requirements() == null || request.requirements().isBlank()) {
+            log.debug("Rejecting request: requirements is blank");
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "requirements is required and must not be blank"));
         }
         if (request.dataStructure() == null || request.dataStructure().isBlank()) {
+            log.debug("Rejecting request: dataStructure is blank");
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "dataStructure is required and must not be blank"));
         }
@@ -74,6 +81,7 @@ public class ApexGenerationController {
                 request.requirements(), request.dataStructure(), hints);
 
         String jobId = genRequest.requestId();
+        log.debug("Created job {} with {} hints", jobId, hints.size());
 
         // Evict expired jobs to prevent unbounded growth
         evictExpiredJobs();
@@ -83,8 +91,11 @@ public class ApexGenerationController {
         // Run generation asynchronously
         executor.submit(() -> {
             try {
+                log.debug("Starting async generation for job {}", jobId);
                 GenerationResult result = generationService.generate(genRequest);
                 jobs.put(jobId, new JobEntry("completed", result, null, Instant.now()));
+                log.debug("Job {} completed. Success={}, files={}",
+                        jobId, result.success(), result.files().size());
             } catch (Exception e) {
                 log.error("Generation failed for job {}: {}", jobId, e.getMessage(), e);
                 jobs.put(jobId, new JobEntry("failed", null, e.getMessage(), Instant.now()));
@@ -104,6 +115,8 @@ public class ApexGenerationController {
     @GetMapping("/status/{jobId}")
     public ResponseEntity<Map<String, Object>> status(@PathVariable String jobId) {
         JobEntry job = jobs.get(jobId);
+        log.debug("GET /api/apex/status/{} — found={}, status={}",
+                jobId, job != null, job != null ? job.status() : "N/A");
         if (job == null) {
             return ResponseEntity.notFound().build();
         }
@@ -133,6 +146,36 @@ public class ApexGenerationController {
             report.put("compilationSuccess", result.validationReport().compilationSuccess());
             report.put("executionSuccess", result.validationReport().executionSuccess());
             report.put("expectationsPass", result.validationReport().expectationsPass());
+            report.put("totalErrors", result.validationReport().totalErrors());
+            report.put("totalWarnings", result.validationReport().totalWarnings());
+
+            // Include per-stage detail extracted from the raw validation report
+            Map<String, Object> executionDetails = result.validationReport().executionDetails();
+            String rawReport = executionDetails != null
+                    ? (String) executionDetails.getOrDefault("rawReport", "") : "";
+            report.put("stageDetails", buildStageDetails(rawReport, result.validationReport()));
+
+            // Include captured rule execution results if available
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> ruleResults = executionDetails != null
+                    ? (List<Map<String, Object>>) executionDetails.getOrDefault("ruleResults", List.of())
+                    : List.of();
+            if (!ruleResults.isEmpty()) {
+                report.put("ruleResults", ruleResults);
+            }
+
+            // Include structured issues if any
+            List<Map<String, String>> issueList = new ArrayList<>();
+            for (GenerationResult.ValidationIssue issue : result.validationReport().issues()) {
+                Map<String, String> issueMap = new LinkedHashMap<>();
+                issueMap.put("errorCode", issue.errorCode());
+                issueMap.put("message", issue.message());
+                issueMap.put("stage", issue.stage());
+                issueMap.put("severity", issue.severity());
+                issueList.add(issueMap);
+            }
+            report.put("issues", issueList);
+
             response.put("validationReport", report);
 
             if (result.outputDirectory() != null) {
@@ -150,12 +193,97 @@ public class ApexGenerationController {
      */
     @GetMapping("/jobs")
     public ResponseEntity<List<Map<String, String>>> listJobs() {
+        log.debug("GET /api/apex/jobs — total jobs: {}", jobs.size());
         List<Map<String, String>> jobList = new ArrayList<>();
         jobs.forEach((id, job) -> jobList.add(Map.of(
                 "jobId", id,
                 "status", job.status()
         )));
         return ResponseEntity.ok(jobList);
+    }
+
+    // ---- Validation stage detail extraction ----
+
+    /**
+     * Extracts per-stage detail text from the validation report.
+     * Uses structured per-stage blocks extracted by OutputPackager when available,
+     * falls back to extracting from the raw report text.
+     */
+    private Map<String, Object> buildStageDetails(String rawReport,
+                                                   GenerationResult.ValidationReport report) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        Map<String, Object> execDetails = report.executionDetails();
+
+        String[] stages = {"lexical", "compilation", "execution", "expectation"};
+        String[] detailKeys = {"lexicalDetail", "compilationDetail", "executionDetail", "expectationDetail"};
+        boolean[] results = {
+                report.lexicalValid(), report.compilationSuccess(),
+                report.executionSuccess(), report.expectationsPass()
+        };
+        String[] labels = {"Lexical Validation", "Compilation", "Execution", "Expectations"};
+
+        for (int i = 0; i < stages.length; i++) {
+            Map<String, Object> stage = new LinkedHashMap<>();
+            stage.put("pass", results[i]);
+            stage.put("label", labels[i]);
+
+            // Try structured per-stage detail first (from OutputPackager extraction)
+            String stageDetail = execDetails != null
+                    ? (String) execDetails.getOrDefault(detailKeys[i], "") : "";
+
+            // Fall back to raw report text extraction
+            if (stageDetail == null || stageDetail.isBlank()) {
+                stageDetail = extractStageText(rawReport, stages[i],
+                        i + 1 < stages.length ? stages[i + 1] : null);
+            }
+
+            if (stageDetail != null && !stageDetail.isBlank()) {
+                stage.put("detail", stageDetail.trim());
+            } else {
+                stage.put("detail", labels[i] + ": " + (results[i] ? "PASS" : "FAIL"));
+            }
+
+            details.put(stages[i], stage);
+        }
+
+        // Add overall summary info
+        details.put("totalErrors", report.totalErrors());
+        details.put("totalWarnings", report.totalWarnings());
+        if (rawReport != null && !rawReport.isBlank()) {
+            details.put("rawReport", rawReport);
+        }
+
+        return details;
+    }
+
+    /**
+     * Extracts text from the raw report between one stage keyword and the next.
+     */
+    private String extractStageText(String rawReport, String stage, String nextStage) {
+        if (rawReport == null || rawReport.isBlank()) return null;
+
+        String lower = rawReport.toLowerCase();
+        int start = lower.indexOf(stage);
+        if (start < 0) return null;
+
+        // Find the beginning of the line containing this stage
+        int lineStart = rawReport.lastIndexOf('\n', start);
+        lineStart = lineStart < 0 ? 0 : lineStart + 1;
+
+        // Find the end: either the next stage keyword or end of text
+        int end = rawReport.length();
+        if (nextStage != null) {
+            int nextIdx = lower.indexOf(nextStage, start + stage.length());
+            if (nextIdx > 0) {
+                // Back up to the beginning of that line
+                int nextLineStart = rawReport.lastIndexOf('\n', nextIdx);
+                if (nextLineStart > lineStart) {
+                    end = nextLineStart;
+                }
+            }
+        }
+
+        return rawReport.substring(lineStart, end).trim();
     }
 
     // ---- DTOs ----
@@ -174,9 +302,14 @@ public class ApexGenerationController {
     ) {}
 
     private void evictExpiredJobs() {
+        int before = jobs.size();
         Instant cutoff = Instant.now().minusMillis(JOB_TTL_MILLIS);
         jobs.entrySet().removeIf(e ->
                 e.getValue().createdAt().isBefore(cutoff)
                         || (jobs.size() > MAX_JOBS && !"running".equals(e.getValue().status())));
+        int evicted = before - jobs.size();
+        if (evicted > 0) {
+            log.debug("Evicted {} expired jobs ({} remaining)", evicted, jobs.size());
+        }
     }
 }

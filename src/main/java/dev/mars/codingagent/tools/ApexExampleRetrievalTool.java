@@ -13,12 +13,17 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Typed tool for retrieving relevant APEX YAML examples from the indexed corpus.
  * Uses tag-based filtering on the example index to find feature-matched examples.
  * The agent can then read the matched files using FileSystemTools.
  */
 public class ApexExampleRetrievalTool {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexExampleRetrievalTool.class);
 
     private final ObjectMapper objectMapper;
     private final List<Map<String, Object>> fileEntries;
@@ -61,6 +66,8 @@ public class ApexExampleRetrievalTool {
             @ToolParam(description = "Comma-separated feature tags to match (e.g., 'rules,enrichments,rule-groups')") String featureTags,
             @ToolParam(description = "Document type filter (e.g., 'rule-config', 'scenario'). Use 'any' for no filter.", required = false) String docType,
             @ToolParam(description = "Maximum number of results to return (default: 5)", required = false) Integer topK) {
+        log.debug("[ApexSearchExamples] Searching — features='{}', docType='{}', topK={}",
+                featureTags, docType, topK);
 
         if (topK == null || topK <= 0) topK = 5;
 
@@ -132,6 +139,8 @@ public class ApexExampleRetrievalTool {
         response.put("totalMatches", scored.size());
         response.put("returned", results.size());
         response.put("results", results);
+        log.debug("[ApexSearchExamples] Found {} total matches, returning top {}",
+                scored.size(), results.size());
 
         if (results.isEmpty()) {
             response.put("suggestion", "Try broader feature tags or use 'any' for docType");
@@ -151,6 +160,7 @@ public class ApexExampleRetrievalTool {
             """)
     @SuppressWarnings("unchecked")
     public String getCorpusStats() {
+        log.debug("[ApexCorpusStats] Computing corpus statistics over {} files", fileEntries.size());
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalFiles", fileEntries.size());
 

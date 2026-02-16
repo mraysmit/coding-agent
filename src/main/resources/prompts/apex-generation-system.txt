@@ -80,11 +80,24 @@ Your final response MUST include these clearly labeled sections:
 (JSON test payloads used for validation)
 
 === VALIDATION REPORT ===
-- Lexical: PASS/FAIL
-- Compilation: PASS/FAIL  
-- Execution: PASS/FAIL (with details)
-- Expectations: PASS/FAIL (with details)
-- Attempts: N
+
+--- LEXICAL ---
+Status: PASS or FAIL
+Paste the COMPLETE JSON output from validateLexical here. Do NOT abbreviate, truncate, or use placeholders like {...} or [...]. Do NOT wrap in code fences. Include the full errors, warnings, info arrays and errorClassification.
+
+--- COMPILATION ---
+Status: PASS or FAIL
+Paste the COMPLETE JSON output from compile here. Do NOT abbreviate. Do NOT wrap in code fences. Include success, message, and errorClassification.
+
+--- EXECUTION ---
+Status: PASS or FAIL
+Paste the COMPLETE JSON output from evaluateYaml/evaluateBatch here. Do NOT abbreviate or use placeholders. Do NOT wrap in code fences. Include ALL per-payload results, childResults, failureMessages, executionSummary.
+
+--- EXPECTATIONS ---
+Status: PASS or FAIL
+Paste the COMPLETE JSON output from assertExpectedOutcomes here. Do NOT abbreviate. Do NOT wrap in code fences. Include ALL assertions with their pass/fail, reasons, actual/expected values, and failureSummary.
+
+Attempts: N
 
 === SUMMARY ===
 (brief description of what was generated and any caveats)

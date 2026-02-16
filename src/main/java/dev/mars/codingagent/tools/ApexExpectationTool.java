@@ -8,6 +8,9 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Typed tool for asserting business expectations against APEX execution results.
  * Validates that rule execution outcomes match the intended business logic,
@@ -21,6 +24,8 @@ import java.util.*;
  * - CHILD_RESULT_COUNT: assert number of childResults
  */
 public class ApexExpectationTool {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexExpectationTool.class);
 
     private final ObjectMapper objectMapper;
 
@@ -52,6 +57,8 @@ public class ApexExpectationTool {
     public String assertExpectedOutcomes(
             @ToolParam(description = "JSON output from ApexExecute tool") String actualResultJson,
             @ToolParam(description = "JSON array of expectation objects") String expectationsJson) {
+        log.debug("[ApexAssertExpectations] Asserting expectations. actualResult={} chars, expectations={} chars",
+                actualResultJson.length(), expectationsJson.length());
 
         Map<String, Object> response = new LinkedHashMap<>();
         try {
@@ -89,6 +96,8 @@ public class ApexExpectationTool {
             response.put("passed", passCount);
             response.put("failed", failCount);
             response.put("assertions", results);
+            log.debug("[ApexAssertExpectations] Complete. overallPass={}, passed={}, failed={}",
+                    failCount == 0, passCount, failCount);
 
             // Generate summary for agent consumption
             if (failCount > 0) {

@@ -1,0 +1,14 @@
+{
+  "requestId" : "apex-1771233746743-81b3d8f8",
+  "timestamp" : "2026-02-16T09:22:58.638853500Z",
+  "attempts" : 1,
+  "success" : false,
+  "lexicalValid" : false,
+  "compilationSuccess" : false,
+  "executionSuccess" : false,
+  "expectationsPass" : false,
+  "totalErrors" : 0,
+  "totalWarnings" : 0,
+  "issues" : [ ],
+  "summary" : ""
+}

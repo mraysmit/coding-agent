@@ -331,4 +331,268 @@ class OutputPackagerTest {
         assertThat(content).contains("id: test");
         assertThat(content).doesNotContain("```");
     }
+
+    // ===== Heading normalization =====
+
+    @Test
+    void normalizeSectionHeadings_markdownHashHeadings() {
+        String input = """
+                ### GENERATED YAML
+                some yaml
+                ### TEST DATA
+                some data
+                ### VALIDATION REPORT
+                some report
+                ### SUMMARY
+                some summary
+                """;
+        String result = packager.normalizeSectionHeadings(input);
+        assertThat(result).contains("=== GENERATED YAML ===");
+        assertThat(result).contains("=== TEST DATA ===");
+        assertThat(result).contains("=== VALIDATION REPORT ===");
+        assertThat(result).contains("=== SUMMARY ===");
+        assertThat(result).doesNotContain("###");
+    }
+
+    @Test
+    void normalizeSectionHeadings_doubleHashHeadings() {
+        String input = """
+                ## GENERATED YAML
+                some yaml
+                ## SUMMARY
+                done
+                """;
+        String result = packager.normalizeSectionHeadings(input);
+        assertThat(result).contains("=== GENERATED YAML ===");
+        assertThat(result).contains("=== SUMMARY ===");
+    }
+
+    @Test
+    void normalizeSectionHeadings_alreadyCorrectFormat() {
+        String input = """
+                === GENERATED YAML ===
+                some yaml
+                === SUMMARY ===
+                done
+                """;
+        String result = packager.normalizeSectionHeadings(input);
+        assertThat(result).contains("=== GENERATED YAML ===");
+        assertThat(result).contains("=== SUMMARY ===");
+    }
+
+    @Test
+    void normalizeSectionHeadings_null_returnsNull() {
+        assertThat(packager.normalizeSectionHeadings(null)).isNull();
+    }
+
+    @Test
+    void packageOutput_markdownHeadings_extractsSections() throws Exception {
+        String response = """
+                ### GENERATED YAML
+                ```yaml
+                metadata:
+                  id: "md-test"
+                  name: "Markdown Test"
+                  version: "1.0"
+                  description: "Test markdown headings"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Check Amount"
+                    condition: "#amount > 100"
+                    message: "High amount"
+                    severity: "INFO"
+                ```
+                
+                ### TEST DATA
+                ```json
+                {"amount": 500}
+                ```
+                
+                ### VALIDATION REPORT
+                - Lexical: PASS
+                - Compilation: PASS
+                - Execution: PASS
+                - Expectations: PASS
+                - Attempts: 1
+                
+                ### SUMMARY
+                Generated rule-config with markdown headings.
+                """;
+
+        GenerationResult result = packager.packageOutput("req-md", response, 1);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.files()).hasSize(2);
+        assertThat(result.validationReport().lexicalValid()).isTrue();
+        assertThat(result.validationReport().compilationSuccess()).isTrue();
+        assertThat(result.validationReport().executionSuccess()).isTrue();
+        assertThat(result.validationReport().expectationsPass()).isTrue();
+        assertThat(result.validationReport().executionDetails()).containsKey("rawReport");
+        assertThat(result.summary()).contains("markdown");
+    }
+
+    // ===== Per-stage block extraction =====
+
+    @Test
+    void extractStageBlock_delimitedBlocks() {
+        String text = """
+                --- LEXICAL ---
+                Status: PASS
+                {"valid": true, "errors": [], "warnings": []}
+                
+                --- COMPILATION ---
+                Status: PASS
+                {"success": true, "message": "Compilation successful"}
+                
+                --- EXECUTION ---
+                Status: PASS
+                {"success": true, "childResults": [{"success": true}]}
+                
+                --- EXPECTATIONS ---
+                Status: PASS
+                {"overallPass": true, "totalAssertions": 2, "passed": 2, "failed": 0}
+                """;
+
+        String lexical = packager.extractStageBlock(text, "LEXICAL", "COMPILATION");
+        assertThat(lexical).contains("\"valid\": true");
+        assertThat(lexical).contains("Status: PASS");
+        assertThat(lexical).doesNotContain("COMPILATION");
+
+        String compilation = packager.extractStageBlock(text, "COMPILATION", "EXECUTION");
+        assertThat(compilation).contains("Compilation successful");
+        assertThat(compilation).doesNotContain("EXECUTION");
+
+        String execution = packager.extractStageBlock(text, "EXECUTION", "EXPECTATIONS");
+        assertThat(execution).contains("childResults");
+        assertThat(execution).doesNotContain("EXPECTATIONS");
+
+        String expectations = packager.extractStageBlock(text, "EXPECTATIONS", null);
+        assertThat(expectations).contains("overallPass");
+        assertThat(expectations).contains("totalAssertions");
+    }
+
+    @Test
+    void extractStageBlock_fallbackToSingleLine() {
+        String text = """
+                - Lexical: PASS
+                - Compilation: PASS
+                - Execution: FAIL - rule condition error
+                - Expectations: FAIL
+                """;
+
+        String lexical = packager.extractStageBlock(text, "LEXICAL", "COMPILATION");
+        assertThat(lexical).contains("Lexical").contains("PASS");
+
+        String execution = packager.extractStageBlock(text, "EXECUTION", "EXPECTATIONS");
+        assertThat(execution).contains("FAIL");
+    }
+
+    @Test
+    void extractStageBlock_emptyInput() {
+        assertThat(packager.extractStageBlock(null, "LEXICAL", "COMPILATION")).isEmpty();
+        assertThat(packager.extractStageBlock("", "LEXICAL", "COMPILATION")).isEmpty();
+    }
+
+    @Test
+    void parseValidationReport_storesPerStageDetails() {
+        String text = """
+                --- LEXICAL ---
+                Status: PASS
+                {"valid": true, "errors": []}
+                
+                --- COMPILATION ---
+                Status: PASS
+                {"success": true, "message": "OK"}
+                
+                --- EXECUTION ---
+                Status: FAIL
+                {"success": false, "failureMessages": ["rule failed"]}
+                
+                --- EXPECTATIONS ---
+                Status: FAIL
+                {"overallPass": false, "failureSummary": ["mismatch"]}
+                """;
+
+        var report = packager.parseValidationReport(text);
+        assertThat(report.executionDetails()).containsKey("lexicalDetail");
+        assertThat(report.executionDetails()).containsKey("compilationDetail");
+        assertThat(report.executionDetails()).containsKey("executionDetail");
+        assertThat(report.executionDetails()).containsKey("expectationDetail");
+
+        String lexicalDetail = (String) report.executionDetails().get("lexicalDetail");
+        assertThat(lexicalDetail).contains("\"valid\": true");
+
+        String expectationDetail = (String) report.executionDetails().get("expectationDetail");
+        assertThat(expectationDetail).contains("mismatch");
+    }
+
+    // ===== drainResults integration =====
+
+    @Test
+    void packageOutput_includesDrainedRuleResults() throws Exception {
+        // Simulate what ApexExecuteTool.storeResult() does on this thread
+        // by calling the tool's storeResult indirectly via a real tool invocation
+        // Here we test that if drainResults returns data, it ends up in executionDetails.
+        //
+        // Since drainResults() is thread-keyed and we can't easily mock a static method,
+        // we verify the integration by manually pushing data into the collector.
+        var field = dev.mars.codingagent.tools.ApexExecuteTool.class
+                .getDeclaredField("executionResults");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var map = (java.util.concurrent.ConcurrentHashMap<Long, java.util.List<java.util.Map<String, Object>>>) field.get(null);
+
+        long threadId = Thread.currentThread().threadId();
+        var results = java.util.Collections.synchronizedList(new java.util.ArrayList<java.util.Map<String, Object>>());
+        var ruleResult = new java.util.LinkedHashMap<String, Object>();
+        ruleResult.put("success", true);
+        ruleResult.put("resultType", "MATCH");
+        ruleResult.put("childResults", java.util.List.of(
+                java.util.Map.of("ruleId", "r1", "ruleName", "Rule One", "success", true,
+                        "triggered", true, "resultType", "MATCH", "severity", "INFO")
+        ));
+        results.add(ruleResult);
+        map.put(threadId, results);
+
+        String response = """
+                === GENERATED YAML ===
+                metadata:
+                  id: "rule-drain-test"
+                  name: "Drain Test"
+                  version: "1.0"
+                  description: "test drain"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule One"
+                    condition: "#value > 0"
+                    message: "Positive"
+                
+                === VALIDATION REPORT ===
+                - Lexical: PASS
+                - Compilation: PASS
+                - Execution: PASS
+                - Expectations: PASS
+                
+                === SUMMARY ===
+                Done.
+                """;
+
+        GenerationResult result = packager.packageOutput("drain-test", response, 1);
+
+        // Verify rule results were drained into executionDetails
+        assertThat(result.validationReport().executionDetails()).containsKey("ruleResults");
+        @SuppressWarnings("unchecked")
+        var drainedResults = (java.util.List<java.util.Map<String, Object>>)
+                result.validationReport().executionDetails().get("ruleResults");
+        assertThat(drainedResults).hasSize(1);
+        assertThat(drainedResults.get(0)).containsEntry("success", true);
+        assertThat(drainedResults.get(0)).containsEntry("resultType", "MATCH");
+
+        // Verify drain cleared the results
+        assertThat(dev.mars.codingagent.tools.ApexExecuteTool.drainResults()).isEmpty();
+    }
 }

@@ -1,0 +1,26 @@
+metadata:
+  id: "order-discount-rules"
+  name: "Order Discount Rules"
+  version: "1.0"
+  description: "Business rules for applying discounts based on order total and customer tier."
+  type: "rule-config"
+  author: "Configured APEX Tool"
+
+rules:
+  - id: "discount-10-percent"
+    name: "10 Percent Discount"
+    condition: "#orderTotal > 100 && #customerTier != 'VIP'"
+    message: "Orders over $100 receive a 10% discount"
+    severity: "INFO"
+  
+  - id: "discount-20-percent"
+    name: "20 Percent Discount"
+    condition: "#orderTotal > 500 && #customerTier != 'VIP'"
+    message: "Orders over $500 receive a 20% discount"
+    severity: "INFO"
+  
+  - id: "discount-vip"
+    name: "VIP Discount"
+    condition: "#customerTier == 'VIP'"
+    message: "VIP customers receive at least 15% discount"
+    severity: "INFO"

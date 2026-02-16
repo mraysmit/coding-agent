@@ -1,0 +1,6 @@
+[
+  {"orderTotal": 250, "customerTier": "VIP", "itemCount": 5, "isReturningCustomer": true},
+  {"orderTotal": 150, "customerTier": "Regular", "itemCount": 3, "isReturningCustomer": false},
+  {"orderTotal": 600, "customerTier": "Regular", "itemCount": 10, "isReturningCustomer": true},
+  {"orderTotal": 80, "customerTier": "Regular", "itemCount": 2, "isReturningCustomer": false}
+]

@@ -1,0 +1,14 @@
+{
+  "requestId" : "apex-1771239091943-cd252b36",
+  "timestamp" : "2026-02-16T10:52:46.480353200Z",
+  "attempts" : 1,
+  "success" : false,
+  "lexicalValid" : false,
+  "compilationSuccess" : false,
+  "executionSuccess" : false,
+  "expectationsPass" : false,
+  "totalErrors" : 1,
+  "totalWarnings" : 0,
+  "issues" : [ ],
+  "summary" : "The YAML configuration successfully compiled and executed, indicating the rule setup's syntactic and semantic correctness. However, logical expectation assertions did not align appropriately with the rules executed against the provided test data, leading to a mismatch error. Execution successfully triggered \"MATCH\" statuses, but the expectation parameters or configurations may require revisiting to capture accurate verification logic."
+}

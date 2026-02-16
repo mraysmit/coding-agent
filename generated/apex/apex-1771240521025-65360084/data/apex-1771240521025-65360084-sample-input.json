@@ -1,0 +1,4 @@
+({ "name": "Test Case 1", "data": { "orderTotal": 50, "customerTier": "Regular" } },
+ { "name": "Test Case 2", "data": { "orderTotal": 250, "customerTier": "Regular" } },
+ { "name": "Test Case 3", "data": { "orderTotal": 600, "customerTier": "Regular" } },
+ { "name": "Test Case 4", "data": { "orderTotal": 250, "customerTier": "VIP" } })

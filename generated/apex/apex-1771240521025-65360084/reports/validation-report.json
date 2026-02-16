@@ -1,0 +1,14 @@
+{
+  "requestId" : "apex-1771240521025-65360084",
+  "timestamp" : "2026-02-16T11:16:16.690963800Z",
+  "attempts" : 1,
+  "success" : false,
+  "lexicalValid" : true,
+  "compilationSuccess" : true,
+  "executionSuccess" : true,
+  "expectationsPass" : false,
+  "totalErrors" : 1,
+  "totalWarnings" : 0,
+  "issues" : [ ],
+  "summary" : "Generated APEX YAML config successfully passed syntax checks but encountered logical alignment issues in rule applications for VIP cases. Further investigation into internal result tracking and JSON-to-YAML translation warranted.\n```\n\n**Recommendation:** Consult execution logs for deeper rule evaluation insights. Ensure test data reflects intended states for VIP tier handling meticulously. This strategy aligns next steps with reconciliation needs holistically."
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Standard Customer - Medium Order",
+    "data": {"orderTotal":250,"customerTier":"Standard","itemCount":5,"isReturningCustomer":true}
+  },
+  {
+    "name": "Standard Customer - Large Order",
+    "data": {"orderTotal":600,"customerTier":"Standard","itemCount":10,"isReturningCustomer":true}
+  },
+  {
+    "name": "VIP Customer - Small Order",
+    "data": {"orderTotal":80,"customerTier":"VIP","itemCount":2,"isReturningCustomer":true}
+  },
+  {
+    "name": "VIP Customer - Large Order",
+    "data": {"orderTotal":700,"customerTier":"VIP","itemCount":15,"isReturningCustomer":false}
+  }
+]

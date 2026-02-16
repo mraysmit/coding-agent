@@ -10,11 +10,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Typed tool providing APEX syntax reference data to the agent.
  * Loads the condensed syntax artifact and provides structured lookup methods.
  */
 public class ApexSyntaxTool {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexSyntaxTool.class);
 
     private final ObjectMapper objectMapper;
     private final Map<String, Object> syntaxDoc;
@@ -38,6 +43,7 @@ public class ApexSyntaxTool {
             """)
     public String getDocTypeTemplate(
             @ToolParam(description = "Document type or template name (e.g., 'rule-config', 'scenario-registry', 'lookup-enrichment-config')") String docType) {
+        log.debug("[ApexGetDocTypeTemplate] Looking up template for docType='{}'", docType);
         Map<String, Object> result = new LinkedHashMap<>();
         @SuppressWarnings("unchecked")
         Map<String, Object> templates = (Map<String, Object>) syntaxDoc.get("templates");
@@ -61,9 +67,12 @@ public class ApexSyntaxTool {
             result.put("found", true);
             result.put("templateName", templateKey);
             result.put("template", templates.get(templateKey));
+            log.debug("[ApexGetDocTypeTemplate] Found template '{}'", templateKey);
         } else {
             result.put("found", false);
             result.put("message", "No template for '" + docType + "'. Available: " + templates.keySet());
+            log.debug("[ApexGetDocTypeTemplate] Template not found for '{}'. Available: {}",
+                    docType, templates.keySet());
         }
         return toJson(result);
     }
@@ -80,6 +89,7 @@ public class ApexSyntaxTool {
     @SuppressWarnings("unchecked")
     public String getRequiredFields(
             @ToolParam(description = "APEX document type (e.g., 'rule-config', 'scenario', 'dataset')") String docType) {
+        log.debug("[ApexGetRequiredFields] Looking up required fields for docType='{}'", docType);
         Map<String, Object> result = new LinkedHashMap<>();
 
         // Common required metadata
@@ -125,6 +135,7 @@ public class ApexSyntaxTool {
             """)
     public String getKeywordRules(
             @ToolParam(description = "Section name (e.g., 'enrichment-types', 'rule-fields', 'spel-rules')") String section) {
+        log.debug("[ApexGetKeywordRules] Looking up keyword rules for section='{}'", section);
         Map<String, Object> result = new LinkedHashMap<>();
 
         if (syntaxDoc.containsKey(section)) {
@@ -154,6 +165,7 @@ public class ApexSyntaxTool {
             Always consult this before writing SpEL expressions in APEX rules.
             """)
     public String getSpelRules() {
+        log.debug("[ApexGetSpelRules] Returning SpEL syntax rules");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("spelRules", syntaxDoc.get("spel-rules"));
         return toJson(result);

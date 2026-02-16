@@ -8,12 +8,30 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Typed tool for executing APEX YAML rules against JSON fact data.
  * Wraps RulesEngine.evaluateYaml() with structured JSON responses.
+ * <p>
+ * Also captures execution results in a static collector so that
+ * OutputPackager can include them in the generation output without
+ * depending on the LLM to faithfully reproduce the full tool output.
  */
 public class ApexExecuteTool {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexExecuteTool.class);
+
+    /**
+     * Accumulated execution results keyed by a session/thread context.
+     * Each entry is a list of per-payload result maps.
+     * Cleared by OutputPackager after reading.
+     */
+    private static final ConcurrentHashMap<Long, List<Map<String, Object>>> executionResults =
+            new ConcurrentHashMap<>();
 
     private final ObjectMapper objectMapper;
 
@@ -47,6 +65,8 @@ public class ApexExecuteTool {
     public String evaluateYaml(
             @ToolParam(description = "The APEX YAML content defining rules/enrichments") String yamlContent,
             @ToolParam(description = "JSON object with input facts to evaluate against") String jsonFacts) {
+        log.debug("[ApexExecute] Evaluating YAML ({} chars) against facts ({} chars)",
+                yamlContent.length(), jsonFacts.length());
         Map<String, Object> result = new LinkedHashMap<>();
         try {
             // Parse the JSON facts into a Map
@@ -76,9 +96,14 @@ public class ApexExecuteTool {
                 List<Map<String, Object>> childSummaries = new ArrayList<>();
                 for (RuleResult child : children) {
                     Map<String, Object> childMap = new LinkedHashMap<>();
+                    childMap.put("ruleId", child.getRuleId() != null ? child.getRuleId() : "unknown");
+                    childMap.put("ruleName", child.getRuleName() != null ? child.getRuleName() : "unknown");
                     childMap.put("success", child.isSuccess());
+                    childMap.put("triggered", child.isTriggered());
                     childMap.put("resultType", child.getResultType() != null
                             ? child.getResultType().toString() : "UNKNOWN");
+                    childMap.put("message", child.getMessage() != null ? child.getMessage() : "");
+                    childMap.put("severity", child.getSeverity() != null ? child.getSeverity() : "INFO");
                     childMap.put("failureMessages",
                             child.getFailureMessages() != null ? child.getFailureMessages() : List.of());
                     childSummaries.add(childMap);
@@ -90,11 +115,18 @@ public class ApexExecuteTool {
                 result.put("childResultCount", 0);
             }
 
+            // Store result in the collector for OutputPackager to retrieve later
+            storeResult(result);
+
             // Execution summary
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("evaluated", true);
             summary.put("ruleViolationsFound", !ruleResult.isSuccess());
             result.put("executionSummary", summary);
+            log.debug("[ApexExecute] Execution complete. success={}, failures={}, children={}",
+                    ruleResult.isSuccess(),
+                    failures != null ? failures.size() : 0,
+                    children != null ? children.size() : 0);
 
         } catch (JsonProcessingException e) {
             result.put("success", false);
@@ -126,6 +158,8 @@ public class ApexExecuteTool {
     public String evaluateBatch(
             @ToolParam(description = "The APEX YAML content defining rules/enrichments") String yamlContent,
             @ToolParam(description = "JSON array of test payload objects, each with 'name' and 'data' fields") String jsonPayloadsArray) {
+        log.debug("[ApexExecuteBatch] Batch execution starting. YAML={} chars, payloads={} chars",
+                yamlContent.length(), jsonPayloadsArray.length());
         Map<String, Object> batchResult = new LinkedHashMap<>();
         try {
             @SuppressWarnings("unchecked")
@@ -159,6 +193,8 @@ public class ApexExecuteTool {
             batchResult.put("passed", passCount);
             batchResult.put("failed", failCount);
             batchResult.put("results", results);
+            log.debug("[ApexExecuteBatch] Batch complete. total={}, passed={}, failed={}",
+                    payloads.size(), passCount, failCount);
 
         } catch (JsonProcessingException e) {
             batchResult.put("error", "Invalid JSON payloads array: " + e.getMessage());
@@ -171,6 +207,31 @@ public class ApexExecuteTool {
     }
 
     // ---- Helpers ----
+
+    private void storeResult(Map<String, Object> result) {
+        long threadId = Thread.currentThread().threadId();
+        executionResults.computeIfAbsent(threadId, k -> Collections.synchronizedList(new ArrayList<>()))
+                .add(new LinkedHashMap<>(result));
+    }
+
+    /**
+     * Retrieves and clears all collected execution results for the current thread.
+     * Called by OutputPackager after generation is complete.
+     */
+    public static List<Map<String, Object>> drainResults() {
+        long threadId = Thread.currentThread().threadId();
+        List<Map<String, Object>> results = executionResults.remove(threadId);
+        return results != null ? results : List.of();
+    }
+
+    /**
+     * Retrieves collected results without clearing (for inspection).
+     */
+    public static List<Map<String, Object>> peekResults() {
+        long threadId = Thread.currentThread().threadId();
+        List<Map<String, Object>> results = executionResults.get(threadId);
+        return results != null ? List.copyOf(results) : List.of();
+    }
 
     private String classifyRuntimeException(Exception e) {
         String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";

@@ -14,11 +14,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Typed tool for APEX YAML compilation and lexical validation.
  * Wraps ApexYamlCompiler and ApexYamlLexicalValidator with structured JSON responses.
  */
 public class ApexCompileTool {
+
+    private static final Logger log = LoggerFactory.getLogger(ApexCompileTool.class);
 
     private final ObjectMapper objectMapper;
     private final ApexYamlCompiler compiler;
@@ -50,6 +55,8 @@ public class ApexCompileTool {
             """)
     public String validateLexical(
             @ToolParam(description = "The APEX YAML content to validate") String yamlContent) {
+        log.debug("[ApexValidateLexical] Validating YAML ({} chars). Preview: {}...",
+                yamlContent.length(), yamlContent.substring(0, Math.min(200, yamlContent.length())));
         Map<String, Object> result = new LinkedHashMap<>();
         try {
             Path tempFile = Files.createTempFile("apex-validate-", ".yaml");
@@ -67,6 +74,11 @@ public class ApexCompileTool {
                 result.put("info", info);
                 result.put("errorCount", errors.size());
                 result.put("warningCount", warnings.size());
+                log.debug("[ApexValidateLexical] valid={}, errors={}, warnings={}",
+                        validationResult.isValid(), errors.size(), warnings.size());
+                if (!errors.isEmpty()) {
+                    log.debug("[ApexValidateLexical] First error: {}", errors.get(0));
+                }
 
                 // Classify errors for the agent
                 if (!errors.isEmpty()) {
@@ -104,12 +116,15 @@ public class ApexCompileTool {
             """)
     public String compile(
             @ToolParam(description = "The APEX YAML content to compile") String yamlContent) {
+        log.debug("[ApexCompile] Compiling YAML ({} chars)", yamlContent.length());
         Map<String, Object> result = new LinkedHashMap<>();
         try {
             var compilationResult = compiler.compile(yamlContent);
 
             result.put("success", compilationResult.success);
             result.put("message", compilationResult.message);
+            log.debug("[ApexCompile] success={}, message='{}'",
+                    compilationResult.success, compilationResult.message);
 
             if (compilationResult.generatedCode != null
                     && !compilationResult.generatedCode.isEmpty()) {
@@ -146,6 +161,7 @@ public class ApexCompileTool {
             """)
     public String validateAndCompile(
             @ToolParam(description = "The APEX YAML content to validate and compile") String yamlContent) {
+        log.debug("[ApexValidateAndCompile] Running full validation pipeline ({} chars)", yamlContent.length());
         Map<String, Object> combined = new LinkedHashMap<>();
 
         // Step 1: Lexical validation
@@ -155,6 +171,7 @@ public class ApexCompileTool {
 
         boolean lexicalValid = Boolean.TRUE.equals(lexicalResult.get("valid"));
         if (!lexicalValid) {
+            log.debug("[ApexValidateAndCompile] Stopped at lexical stage — errors found");
             combined.put("overallSuccess", false);
             combined.put("stoppedAt", "lexical");
             combined.put("suggestion", "Fix lexical errors before attempting compilation");
@@ -167,6 +184,8 @@ public class ApexCompileTool {
         combined.put("compilation", compileResult);
         combined.put("overallSuccess", Boolean.TRUE.equals(compileResult.get("success")));
         combined.put("stoppedAt", "none");
+        log.debug("[ApexValidateAndCompile] Pipeline complete. overallSuccess={}",
+                combined.get("overallSuccess"));
 
         return toJson(combined);
     }

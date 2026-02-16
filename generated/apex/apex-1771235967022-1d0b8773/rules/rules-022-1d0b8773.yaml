@@ -1,0 +1,26 @@
+metadata:
+  id: "discount-rules"
+  name: "Order Discount Rules"
+  version: "1.0"
+  description: "Rules for calculating discounts based on order amount and customer tier."
+  type: "rule-config"
+  author: "APEX Configuration Agent"
+
+rules:
+  - id: "rule-over-500"
+    name: "High Value Order Discount"
+    condition: "#orderTotal > 500"
+    message: "Apply 20% discount for orders over $500"
+    severity: "INFO"
+  
+  - id: "rule-over-100"
+    name: "Mid Value Order Discount"
+    condition: "#orderTotal > 100"
+    message: "Apply 10% discount for orders over $100"
+    severity: "INFO"
+  
+  - id: "rule-vip-customer"
+    name: "VIP Customer Discount"
+    condition: "#customerTier.equals('VIP')"
+    message: "Apply at least 15% discount for VIP customers"
+    severity: "INFO"
