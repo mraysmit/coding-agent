@@ -1,0 +1,26 @@
+metadata:
+  id: "order-discount-rules"
+  name: "Order Discount Rules"
+  version: "1.0"
+  description: "Discount rules based on order total and customer tier."
+  type: "rule-config"
+  author: "APEX Rules Configuration Generator"
+
+rules:
+  - id: "discount_10_percent"
+    name: "10% Discount for Orders Over $100"
+    condition: "#orderTotal > 100 && #orderTotal <= 500"
+    message: "Apply a 10% discount for orders over $100."
+    severity: "INFO"
+  
+  - id: "discount_20_percent"
+    name: "20% Discount for Orders Over $500"
+    condition: "#orderTotal > 500"
+    message: "Apply a 20% discount for orders over $500."
+    severity: "INFO"
+  
+  - id: "vip_discount"
+    name: "15% Discount for VIP Customers"
+    condition: "#customerTier == 'VIP'"
+    message: "Apply a minimum 15% discount for VIP customers."
+    severity: "INFO"

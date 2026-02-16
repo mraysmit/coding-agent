@@ -1,0 +1,29 @@
+[
+  {
+    "name": "VIP Customer Discount",
+    "data": {
+      "orderTotal": 250,
+      "customerTier": "VIP",
+      "itemCount": 5,
+      "isReturningCustomer": true
+    }
+  },
+  {
+    "name": "High Order Total Discount",
+    "data": {
+      "orderTotal": 600,
+      "customerTier": "Standard",
+      "itemCount": 3,
+      "isReturningCustomer": false
+    }
+  },
+  {
+    "name": "No Discount",
+    "data": {
+      "orderTotal": 80,
+      "customerTier": "Standard",
+      "itemCount": 1,
+      "isReturningCustomer": true
+    }
+  }
+]

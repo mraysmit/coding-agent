@@ -1,0 +1,14 @@
+{
+  "requestId" : "apex-1771220464555-d0c9a127",
+  "timestamp" : "2026-02-16T05:42:14.575373100Z",
+  "attempts" : 2,
+  "success" : false,
+  "lexicalValid" : true,
+  "compilationSuccess" : true,
+  "executionSuccess" : true,
+  "expectationsPass" : false,
+  "totalErrors" : 1,
+  "totalWarnings" : 0,
+  "issues" : [ ],
+  "summary" : "The APEX YAML configuration for the order discount rule was generated and validated. Lexical and compilation checks passed successfully. Execution against test data succeeded; however, there remains a failure in matching expectations for VIP customers. This will require further investigation or a different approach if continued beyond attempt limitations."
+}

@@ -1,0 +1,26 @@
+metadata:
+  id: "order-discount-rule"
+  name: "Order Discount Configuration"
+  version: "1.0"
+  description: "Applies appropriate discounts based on order value and customer VIP status."
+  type: "rule-config"
+  author: "APEX Configuration Generator"
+
+rules:
+  - id: "rule-high-value-discount-10"
+    name: "High Value Discount 10%"
+    condition: "#orderTotal > 100 and #orderTotal <= 500 and #customerTier != 'VIP'"
+    message: "Order qualifies for a 10% discount."
+    severity: "INFO"
+
+  - id: "rule-high-value-discount-20"
+    name: "High Value Discount 20%"
+    condition: "#orderTotal > 500 and #customerTier != 'VIP'"
+    message: "Order qualifies for a 20% discount."
+    severity: "INFO"
+
+  - id: "rule-vip-discount-15"
+    name: "VIP Discount 15%"
+    condition: "#customerTier == 'VIP'"
+    message: "VIP customers qualify for a 15% discount."
+    severity: "INFO"

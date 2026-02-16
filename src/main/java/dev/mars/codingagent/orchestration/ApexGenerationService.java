@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ToolCallAdvisor;
+import org.springframework.ai.chat.model.ChatModel;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -189,18 +190,20 @@ public class ApexGenerationService {
     }
 
     public static class Builder {
-        private ChatClient.Builder chatClientBuilder;
+        private ChatModel chatModel;
         private Path outputDir = Path.of("generated", "apex");
         private int maxAttempts = DEFAULT_MAX_ATTEMPTS;
 
         private Builder() {}
 
         /**
-         * Set the ChatClient.Builder to use as the base for the APEX-specific ChatClient.
-         * The builder will be cloned and configured with APEX tools and system prompt.
+         * Set the ChatModel to use for the APEX-specific ChatClient.
+         * A fresh ChatClient is built from scratch (not cloned from the auto-configured
+         * builder) to avoid inheriting auto-configured advisors such as
+         * MessageChatMemoryAdvisor, which can leak tool messages between calls.
          */
-        public Builder chatClientBuilder(ChatClient.Builder chatClientBuilder) {
-            this.chatClientBuilder = chatClientBuilder;
+        public Builder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
             return this;
         }
 
@@ -215,12 +218,20 @@ public class ApexGenerationService {
         }
 
         public ApexGenerationService build() {
-            if (chatClientBuilder == null) {
-                throw new IllegalStateException("chatClientBuilder is required");
+            if (chatModel == null) {
+                throw new IllegalStateException("chatModel is required");
             }
 
-            // Clone the builder to avoid mutating the shared instance
-            ChatClient apexClient = chatClientBuilder.clone()
+            // Build a completely fresh ChatClient — NOT cloned from the auto-configured
+            // builder. Cloning inherits auto-configured advisors (e.g. ChatMemory)
+            // that cause 'tool messages without tool_calls' errors from OpenAI.
+            //
+            // NOTE: conversationHistoryEnabled must be true (the default) so that
+            // during tool-call loops, the full conversation [system, user, assistant(tool_calls),
+            // tool(result)] is sent to the model. When false, ToolCallAdvisor strips
+            // the context to [system, lastToolResult], violating OpenAI's constraint
+            // that 'tool' messages must follow an assistant message with 'tool_calls'.
+            ChatClient apexClient = ChatClient.builder(chatModel)
                     .defaultSystem(loadSystemPrompt(null))
                     .defaultTools(
                             ApexCompileTool.builder().build(),
@@ -230,7 +241,7 @@ public class ApexGenerationService {
                             ApexExampleRetrievalTool.builder().build()
                     )
                     .defaultAdvisors(
-                            ToolCallAdvisor.builder().conversationHistoryEnabled(false).build()
+                            ToolCallAdvisor.builder().build()
                     )
                     .build();
 

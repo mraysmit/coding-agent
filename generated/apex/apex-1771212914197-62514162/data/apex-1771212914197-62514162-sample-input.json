@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Order with $250 from VIP Customer",
+    "data": {
+      "orderTotal": 250,
+      "customerTier": "VIP",
+      "itemCount": 5,
+      "isReturningCustomer": true
+    }
+  },
+  {
+    "name": "Order with $600",
+    "data": {
+      "orderTotal": 600,
+      "customerTier": "Regular",
+      "itemCount": 3,
+      "isReturningCustomer": false
+    }
+  },
+  {
+    "name": "Order with $50",
+    "data": {
+      "orderTotal": 50,
+      "customerTier": "Regular",
+      "itemCount": 2,
+      "isReturningCustomer": false
+    }
+  }
+]

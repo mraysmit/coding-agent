@@ -35,9 +35,9 @@ public class Application {
 	}
 
 	@Bean
-	ApexGenerationService apexGenerationService(ChatClient.Builder builder) {
+	ApexGenerationService apexGenerationService(ChatModel chatModel) {
 		return ApexGenerationService.builder()
-				.chatClientBuilder(builder)
+				.chatModel(chatModel)
 				.outputDir(Path.of("generated", "apex"))
 				.maxAttempts(3)
 				.build();
