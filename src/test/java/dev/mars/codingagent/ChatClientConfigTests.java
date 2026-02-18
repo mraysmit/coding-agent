@@ -23,7 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @TestPropertySource(properties = {
 		"spring.ai.openai-sdk.api-key=sk-test-dummy-key",
-		"app.repl.enabled=false"
+		"app.repl.enabled=false",
+		"apex.knowledge.enabled=false"
 })
 class ChatClientConfigTests {
 

@@ -16,7 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * environment variable is set, so CI without credentials skips it automatically.
  */
 @SpringBootTest
-@TestPropertySource(properties = "app.repl.enabled=false")
+@TestPropertySource(properties = {
+		"app.repl.enabled=false",
+		"apex.knowledge.enabled=false"
+})
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class ApplicationTests {
 

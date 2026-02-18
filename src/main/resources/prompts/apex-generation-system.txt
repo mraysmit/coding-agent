@@ -39,6 +39,10 @@ For each planned artifact:
 2. Call `getRequiredFields(docType)` to know what's mandatory
 3. Call `searchExamples(featureTags, docType, topK)` to find similar examples
 4. Call `getSpelRules()` if writing SpEL expressions
+5. Call `semanticSearch(query)` when you need deeper understanding of APEX concepts,
+   usage patterns, or documentation on specific features. Good for questions like
+   "how do enrichment groups work with field mappings" or "error recovery patterns".
+   Use this in addition to the tag-based search, especially for complex requirements.
 
 ### Step 3: AUTHOR
 Write the YAML configuration:

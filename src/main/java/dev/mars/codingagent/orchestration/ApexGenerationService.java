@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ToolCallAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.vectorstore.VectorStore;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -220,6 +221,7 @@ public class ApexGenerationService {
 
     public static class Builder {
         private ChatModel chatModel;
+        private VectorStore vectorStore;
         private Path outputDir = Path.of("generated", "apex");
         private int maxAttempts = DEFAULT_MAX_ATTEMPTS;
 
@@ -233,6 +235,15 @@ public class ApexGenerationService {
          */
         public Builder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
+            return this;
+        }
+
+        /**
+         * Set the VectorStore for semantic search over APEX documentation and examples.
+         * When provided, an {@code ApexKnowledgeSearchTool} is added to the tool set.
+         */
+        public Builder vectorStore(VectorStore vectorStore) {
+            this.vectorStore = vectorStore;
             return this;
         }
 
@@ -260,15 +271,22 @@ public class ApexGenerationService {
             // tool(result)] is sent to the model. When false, ToolCallAdvisor strips
             // the context to [system, lastToolResult], violating OpenAI's constraint
             // that 'tool' messages must follow an assistant message with 'tool_calls'.
+
+            // Build tool list — semantic search is optional
+            var tools = new java.util.ArrayList<Object>();
+            tools.add(ApexCompileTool.builder().build());
+            tools.add(ApexExecuteTool.builder().build());
+            tools.add(ApexExpectationTool.builder().build());
+            tools.add(ApexSyntaxTool.builder().build());
+            tools.add(ApexExampleRetrievalTool.builder().build());
+            if (vectorStore != null) {
+                tools.add(ApexKnowledgeSearchTool.builder().vectorStore(vectorStore).build());
+                log.info("ApexKnowledgeSearchTool enabled with vector store");
+            }
+
             ChatClient apexClient = ChatClient.builder(chatModel)
                     .defaultSystem(loadSystemPrompt(null))
-                    .defaultTools(
-                            ApexCompileTool.builder().build(),
-                            ApexExecuteTool.builder().build(),
-                            ApexExpectationTool.builder().build(),
-                            ApexSyntaxTool.builder().build(),
-                            ApexExampleRetrievalTool.builder().build()
-                    )
+                    .defaultTools(tools.toArray())
                     .defaultAdvisors(
                             ToolCallAdvisor.builder().build()
                     )

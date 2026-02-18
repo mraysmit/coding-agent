@@ -7,6 +7,15 @@ spring:
       chat:
         options:
           model: gpt-4o
+      embedding:
+        options:
+          model: text-embedding-3-small
       base-url: https://api.openai.com/v1
   main:
     lazy-initialization: false
+
+# APEX RAG knowledge base
+apex:
+  knowledge:
+    project-root: ${APEX_PROJECT_ROOT:../apex-rules-engine}
+    vector-store-path: knowledge/apex-vector-store.json
