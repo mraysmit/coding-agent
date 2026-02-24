@@ -1,6 +1,6 @@
 spring:
   application:
-    name: codingagent
+    name: apex-ai-agent
   ai:
     openai-sdk:
       api-key: ${OPENAI_API_KEY}
@@ -14,8 +14,14 @@ spring:
   main:
     lazy-initialization: false
 
+# Disable CLI REPL so the web UI stays running
+app:
+  repl:
+    enabled: false
+
 # APEX RAG knowledge base
 apex:
   knowledge:
+    enabled: false
     project-root: ${APEX_PROJECT_ROOT:../apex-rules-engine}
     vector-store-path: knowledge/apex-vector-store.json

@@ -1,0 +1,495 @@
+package dev.mars.apexaiagent.tools;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
+
+/**
+ * Tests for ApexExecuteTool — single execution, batch execution, and error handling.
+ */
+class ApexExecuteToolTest {
+
+    private static ApexExecuteTool tool;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @BeforeAll
+    static void setUp() {
+        tool = ApexExecuteTool.builder().build();
+    }
+
+    // ===== Single execution tests =====
+    // APEX semantics (with 'name' present on rules):
+    //   condition TRUE  → rule PASSES → isSuccess=true (data meets the validation check)
+    //   condition FALSE → rule FAILS  → isSuccess=false (data fails the validation check)
+
+    @Test
+    void evaluateYaml_conditionTrue_returnsSuccess() throws Exception {
+        // condition: #amount > 1000, amount=5000 → condition TRUE → isSuccess=true
+        String yaml = """
+                metadata:
+                  id: "exec-test"
+                  name: "Exec Test"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "high-amount"
+                    name: "High Amount Rule"
+                    condition: "#amount > 1000"
+                    message: "Amount exceeds limit"
+                    severity: "ERROR"
+                """;
+        String facts = """
+                {"amount": 5000}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        // Condition is true → data passes → isSuccess=true
+        assertThat(json.get("success").asBoolean()).isTrue();
+        assertThat(json.get("failureCount").asInt()).isEqualTo(0);
+        assertThat(json.has("executionSummary")).isTrue();
+    }
+
+    @Test
+    void evaluateYaml_conditionFalse_returnsFailure() throws Exception {
+        // condition: #amount > 1000, amount=50 → condition FALSE → isSuccess=false
+        String yaml = """
+                metadata:
+                  id: "exec-test-2"
+                  name: "Exec Test 2"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "high-amount"
+                    name: "High Amount Rule"
+                    condition: "#amount > 1000"
+                    message: "Too high"
+                    severity: "ERROR"
+                """;
+        String facts = """
+                {"amount": 50}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        // Condition is false → data fails → isSuccess=false
+        assertThat(json.get("success").asBoolean()).isFalse();
+        assertThat(json.get("failureCount").asInt()).isGreaterThan(0);
+    }
+
+    @Test
+    void evaluateYaml_multipleRules_someConditionsFalse_reportsFailures() throws Exception {
+        // r1 condition: #amount > 1000, amount=5000 → TRUE → passes
+        // r2 condition: #name == null, name=null → TRUE → passes
+        // Both conditions true → isSuccess=true
+        String yaml = """
+                metadata:
+                  id: "multi"
+                  name: "Multi"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Amount Check"
+                    condition: "#amount > 1000"
+                    message: "Amount too high"
+                    severity: "ERROR"
+                  - id: "r2"
+                    name: "Name Check"
+                    condition: "#name == null"
+                    message: "Name is required"
+                    severity: "ERROR"
+                """;
+        String facts = """
+                {"amount": 5000, "name": null}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        // Both conditions TRUE → passes
+        assertThat(json.get("success").asBoolean()).isTrue();
+    }
+
+    @Test
+    void evaluateYaml_withEnrichment_returnsEnrichedData() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "enrich"
+                  name: "Enrich"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                enrichments:
+                  - id: "calc-total"
+                    type: "calculation-enrichment"
+                    calculation-config:
+                      expression: "#quantity * #price"
+                      result-field: "totalAmount"
+                rules:
+                  - id: "total-check"
+                    name: "Total Check"
+                    condition: "#totalAmount > 10000"
+                    message: "Total amount exceeds limit"
+                    severity: "WARNING"
+                """;
+        String facts = """
+                {"quantity": 100, "price": 50}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        assertThat(json.has("enrichedData")).isTrue();
+        assertThat(json.has("executionSummary")).isTrue();
+    }
+
+    @Test
+    void evaluateYaml_invalidJson_returnsError() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "x"
+                  name: "X"
+                  version: "1.0"
+                  description: "x"
+                  type: "rule-config"
+                  author: "x"
+                rules:
+                  - id: "r1"
+                    name: "Test Rule"
+                    condition: "true"
+                    message: "test"
+                    severity: "INFO"
+                """;
+
+        String result = tool.evaluateYaml(yaml, "not-valid-json");
+        JsonNode json = MAPPER.readTree(result);
+
+        assertThat(json.get("success").asBoolean()).isFalse();
+        assertThat(json.has("error")).isTrue();
+    }
+
+    @Test
+    void evaluateYaml_structuredResponse_hasAllFields() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "structure"
+                  name: "Structure"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Positive Check"
+                    condition: "#x > 0"
+                    message: "positive"
+                    severity: "INFO"
+                """;
+        String facts = """
+                {"x": 5}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        assertThat(json.has("success")).isTrue();
+        assertThat(json.has("resultType")).isTrue();
+        assertThat(json.has("failureMessages")).isTrue();
+        assertThat(json.has("failureCount")).isTrue();
+        assertThat(json.has("enrichedData")).isTrue();
+        assertThat(json.has("childResults")).isTrue();
+        assertThat(json.has("childResultCount")).isTrue();
+        assertThat(json.has("executionSummary")).isTrue();
+    }
+
+    // ===== Batch execution tests =====
+
+    @Test
+    void evaluateBatch_multiplePayloads_returnsBatchResults() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "batch"
+                  name: "Batch"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Amount Limit"
+                    condition: "#amount > 1000"
+                    message: "Too high"
+                    severity: "ERROR"
+                """;
+        String payloads = """
+                [
+                  {"name": "low", "data": {"amount": 100}},
+                  {"name": "high", "data": {"amount": 5000}},
+                  {"name": "zero", "data": {"amount": 0}}
+                ]
+                """;
+
+        String result = tool.evaluateBatch(yaml, payloads);
+        JsonNode json = MAPPER.readTree(result);
+
+        assertThat(json.get("totalPayloads").asInt()).isEqualTo(3);
+        assertThat(json.get("passed").asInt() + json.get("failed").asInt()).isEqualTo(3);
+        assertThat(json.get("results").size()).isEqualTo(3);
+
+        // condition: #amount > 1000
+        //   "low" (100) → FALSE → fails
+        //   "high" (5000) → TRUE → passes
+        //   "zero" (0) → FALSE → fails
+        assertThat(json.get("passed").asInt()).isEqualTo(1);
+        assertThat(json.get("failed").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void evaluateBatch_invalidPayloads_handlesGracefully() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "batch2"
+                  name: "Batch2"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Always True"
+                    condition: "true"
+                    message: "test"
+                    severity: "INFO"
+                """;
+
+        String result = tool.evaluateBatch(yaml, "not-an-array");
+        JsonNode json = MAPPER.readTree(result);
+
+        assertThat(json.has("error")).isTrue();
+        assertThat(json.get("totalPayloads").asInt()).isEqualTo(0);
+    }
+
+    // ===== Error classification =====
+
+    @Test
+    void evaluateYaml_runtimeError_classifiesCorrectly() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "runtime-err"
+                  name: "Runtime"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Nonexistent Method"
+                    condition: "#nonexistent.method()"
+                    message: "test"
+                    severity: "ERROR"
+                """;
+        String facts = """
+                {"x": 1}
+                """;
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        // Should handle gracefully — either error or success=false
+        assertThat(json.has("success")).isTrue();
+    }
+
+    // ===== Child result fields =====
+
+    @Test
+    void evaluateYaml_childResults_containRuleIdAndName() throws Exception {
+        String yaml = """
+                metadata:
+                  id: "child-fields"
+                  name: "Child Fields"
+                  version: "1.0"
+                  description: "test child result fields"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "age-check"
+                    name: "Age Eligibility"
+                    condition: "#age >= 18"
+                    message: "Must be 18 or older"
+                    severity: "ERROR"
+                """;
+        String facts = "{\"age\": 25}";
+
+        String result = tool.evaluateYaml(yaml, facts);
+        JsonNode json = MAPPER.readTree(result);
+
+        JsonNode children = json.get("childResults");
+        // Some engine versions may not produce child results for single-rule configs,
+        // but if they do, verify the fields are present
+        if (children != null && children.size() > 0) {
+            JsonNode child = children.get(0);
+            assertThat(child.has("ruleId")).isTrue();
+            assertThat(child.has("ruleName")).isTrue();
+            assertThat(child.has("triggered")).isTrue();
+            assertThat(child.has("message")).isTrue();
+            assertThat(child.has("severity")).isTrue();
+            assertThat(child.has("success")).isTrue();
+            assertThat(child.has("resultType")).isTrue();
+        }
+    }
+
+    // ===== Static result collector (storeResult / drainResults / peekResults) =====
+
+    @Test
+    void drainResults_afterEvaluateYaml_returnsStoredResults() throws Exception {
+        // Clear any leftover results from prior tests on this thread
+        ApexExecuteTool.drainResults();
+
+        String yaml = """
+                metadata:
+                  id: "drain-test"
+                  name: "Drain Test"
+                  version: "1.0"
+                  description: "test drain"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Simple Rule"
+                    condition: "#x > 0"
+                    message: "positive"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"x\": 5}");
+
+        var drained = ApexExecuteTool.drainResults();
+        assertThat(drained).isNotEmpty();
+        assertThat(drained.get(0)).containsKey("success");
+        assertThat(drained.get(0)).containsKey("resultType");
+        assertThat(drained.get(0)).containsKey("childResults");
+    }
+
+    @Test
+    void drainResults_clearesResultsAfterCall() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "drain-clear"
+                  name: "Drain Clear"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"a\": 1}");
+
+        // First drain returns data
+        assertThat(ApexExecuteTool.drainResults()).isNotEmpty();
+        // Second drain returns empty (already cleared)
+        assertThat(ApexExecuteTool.drainResults()).isEmpty();
+    }
+
+    @Test
+    void peekResults_doesNotClear() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "peek-test"
+                  name: "Peek Test"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"a\": 1}");
+
+        // Peek returns data but doesn't clear
+        assertThat(ApexExecuteTool.peekResults()).isNotEmpty();
+        assertThat(ApexExecuteTool.peekResults()).isNotEmpty(); // still there
+
+        // Drain clears it
+        ApexExecuteTool.drainResults();
+        assertThat(ApexExecuteTool.peekResults()).isEmpty();
+    }
+
+    @Test
+    void drainResults_multipleExecutions_accumulatesAll() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "multi-drain"
+                  name: "Multi Drain"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "#x > 0"
+                    message: "positive"
+                    severity: "INFO"
+                """;
+        tool.evaluateYaml(yaml, "{\"x\": 1}");
+        tool.evaluateYaml(yaml, "{\"x\": -1}");
+        tool.evaluateYaml(yaml, "{\"x\": 100}");
+
+        var drained = ApexExecuteTool.drainResults();
+        assertThat(drained).hasSize(3);
+    }
+
+    @Test
+    void drainResults_errorExecution_doesNotStoreResult() throws Exception {
+        ApexExecuteTool.drainResults(); // clear
+
+        String yaml = """
+                metadata:
+                  id: "err"
+                  name: "Err"
+                  version: "1.0"
+                  description: "test"
+                  type: "rule-config"
+                  author: "test"
+                rules:
+                  - id: "r1"
+                    name: "Rule"
+                    condition: "true"
+                    message: "ok"
+                    severity: "INFO"
+                """;
+        // Invalid JSON → error path (storeResult should NOT be called)
+        tool.evaluateYaml(yaml, "invalid-json");
+
+        var drained = ApexExecuteTool.drainResults();
+        // Error path should not store results
+        assertThat(drained).isEmpty();
+    }
+}

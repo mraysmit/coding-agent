@@ -5,7 +5,7 @@
          Property defaults — overridable via system / env properties
          ============================================================ -->
     <property name="LOG_DIR"  value="${LOG_DIR:-logs}" />
-    <property name="LOG_FILE" value="${LOG_FILE:-codingagent}" />
+    <property name="LOG_FILE" value="${LOG_FILE:-apex-ai-agent}" />
 
     <!-- ============================================================
          Console appender — coloured, pattern matches Spring default
@@ -36,7 +36,7 @@
          Logger levels
          ============================================================ -->
     <!-- Application: DEBUG to see every step -->
-    <logger name="dev.mars.codingagent" level="DEBUG" additivity="false">
+    <logger name="dev.mars.apexaiagent" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
     </logger>

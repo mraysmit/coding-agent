@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>dev.mars</groupId>
-	<artifactId>codingagent</artifactId>
+	<artifactId>apex-ai-agent</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>codingagent</name>
-	<description>Coding Agent CLI</description>
+	<name>apex-ai-agent</name>
+	<description>APEX AI Agent</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -29,7 +29,7 @@
 	<properties>
 		<java.version>23</java.version>
 		<spring-ai.version>2.0.0-M2</spring-ai.version>
-		<start-class>dev.mars.codingagent.Application</start-class>
+		<start-class>dev.mars.apexaiagent.Application</start-class>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starter -->
@@ -107,7 +107,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<mainClass>dev.mars.codingagent.Application</mainClass>
+					<mainClass>dev.mars.apexaiagent.Application</mainClass>
 					<processExecution>DIRECT</processExecution>
 				</configuration>
 			</plugin>

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help — APEX AI Rules Generator</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --border: #2d3148;
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --code-bg: #131620;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+            font-size: 0.95rem;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-hover);
+        }
+
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .section h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-hover);
+        }
+
+        .section p, .section li {
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .section ul, .section ol {
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .section li {
+            margin-bottom: 0.35rem;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.82rem;
+            color: var(--primary-hover);
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            color: var(--text);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin: 0.75rem 0;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary-hover);
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .diagram-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+        }
+
+        .flow-step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 0.85rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .flow-step.active {
+            border-color: var(--primary);
+            color: var(--primary-hover);
+        }
+
+        .flow-arrow {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.12rem 0.45rem;
+            border-radius: 4px;
+        }
+
+        .badge-agent {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary-hover);
+        }
+
+        .badge-orchestrated {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .badge-tool {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.6rem;
+            margin: 0.75rem 0;
+        }
+
+        .tool-card {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.65rem 0.85rem;
+        }
+
+        .tool-card .tool-name {
+            font-family: monospace;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--primary-hover);
+            margin-bottom: 0.2rem;
+        }
+
+        .tool-card .tool-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/home" class="back-link">&larr; Back to Generator</a>
+
+        <header>
+            <h1>APEX AI Agent — Help</h1>
+            <p>Architecture, agentic workflow, tools, and configuration reference</p>
+        </header>
+
+        <!-- Overview -->
+        <div class="section">
+            <h2>Overview</h2>
+            <p>
+                The APEX AI Agent generates, validates, and executes <strong>APEX YAML business rule configurations</strong>
+                from natural language requirements. It is built with <strong>Spring Boot 4.0.2</strong> and
+                <strong>Spring AI 2.0.0-M2</strong>, using <strong>OpenAI GPT-4o</strong> as the backing LLM.
+            </p>
+            <p style="margin-top: 0.5rem;">
+                The application supports two interfaces: a <strong>Web UI</strong> (this application) and an optional
+                <strong>CLI REPL</strong> for interactive terminal use.
+            </p>
+        </div>
+
+        <!-- Agentic Architecture -->
+        <div class="section">
+            <h2>Agentic Architecture</h2>
+            <p>
+                This application uses <strong>agentic AI flow</strong> — the LLM autonomously decides which tools to call,
+                observes results, and iterates until the task is complete. This happens at two layers:
+            </p>
+
+            <h3>1. Autonomous Agent <span class="badge badge-agent">ReAct Loop</span></h3>
+            <p>
+                The <code>ChatClient</code> is configured with a <code>ToolCallAdvisor</code> that enables autonomous
+                multi-step tool calling. The LLM receives a user prompt, decides which tools to invoke (file I/O, grep,
+                shell commands, APEX-specific tools), observes the results, and continues calling tools until it
+                produces a final answer. This is a classic <strong>ReAct-style agent loop</strong>.
+            </p>
+
+            <h3>2. Orchestrated Agent Pipeline <span class="badge badge-orchestrated">Generation Service</span></h3>
+            <p>
+                The <code>ApexGenerationService</code> runs a structured multi-step pipeline where code controls the
+                high-level workflow, but each step uses the LLM agentically with full tool access:
+            </p>
+
+            <div class="diagram-box">
+                <div class="flow-diagram">
+                    <div class="flow-step active">User Prompt</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">LLM + Tools</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Generate YAML</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Compile</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Execute</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Validate</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step active">Output</div>
+                </div>
+                <p style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-muted);">
+                    If validation fails, the agent retries with error feedback (up to 3 attempts)
+                </p>
+            </div>
+
+            <h3>Key Agentic Components</h3>
+            <table>
+                <thead>
+                    <tr><th>Component</th><th>Role</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>ToolCallAdvisor</code></td>
+                        <td>Enables autonomous multi-step tool calling — the LLM decides what to call and when</td>
+                    </tr>
+                    <tr>
+                        <td><code>maxAttempts</code> retry loop</td>
+                        <td>Outer safety net that re-prompts the agent if it doesn't produce valid YAML</td>
+                    </tr>
+                    <tr>
+                        <td><code>buildRetryPrompt()</code></td>
+                        <td>Feeds previous failures back to the agent so it can self-correct</td>
+                    </tr>
+                    <tr>
+                        <td><code>MessageWindowChatMemory</code></td>
+                        <td>50-message sliding window for conversational context across REPL interactions</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Available Tools -->
+        <div class="section">
+            <h2>Available Tools</h2>
+            <p>The LLM has access to the following tools during generation and REPL interactions:</p>
+
+            <h3>General Purpose <span class="badge badge-tool">Agent Utils</span></h3>
+            <div class="tool-grid">
+                <div class="tool-card">
+                    <div class="tool-name">FileSystemTools</div>
+                    <div class="tool-desc">Read, write, and list files in the workspace</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">GrepTool</div>
+                    <div class="tool-desc">Search file contents by regex pattern</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">GlobTool</div>
+                    <div class="tool-desc">Find files by name or path pattern</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ShellTools</div>
+                    <div class="tool-desc">Run shell commands on the host system</div>
+                </div>
+            </div>
+
+            <h3>APEX-Specific <span class="badge badge-tool">Domain Tools</span></h3>
+            <div class="tool-grid">
+                <div class="tool-card">
+                    <div class="tool-name">ApexCompileTool</div>
+                    <div class="tool-desc">Compile and validate APEX YAML syntax</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ApexExecuteTool</div>
+                    <div class="tool-desc">Execute compiled rules against test data</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ApexExpectationTool</div>
+                    <div class="tool-desc">Validate rule outputs against expected results</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ApexSyntaxTool</div>
+                    <div class="tool-desc">Look up APEX YAML syntax reference</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ApexExampleRetrievalTool</div>
+                    <div class="tool-desc">Retrieve example APEX configurations by category</div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-name">ApexKnowledgeSearchTool</div>
+                    <div class="tool-desc">Semantic search over APEX documentation (requires RAG enabled)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How to Use the Web UI -->
+        <div class="section">
+            <h2>How to Use the Web UI</h2>
+            <ol>
+                <li><strong>Business Requirements</strong> — Describe the rules you want in plain English. Be specific about conditions, thresholds, and outcomes.</li>
+                <li><strong>JSON Data Structure</strong> — Provide a sample JSON object that the rules will evaluate. This tells the agent what fields are available.</li>
+                <li><strong>Hints</strong> (optional) — Comma-separated keywords to guide the generation (e.g., <code>eligibility, classification, score-based</code>).</li>
+                <li>Click <strong>Generate Rules</strong> — The agent will generate YAML, compile it, execute it against your data, and validate the output.</li>
+                <li>Review the <strong>Validation Results</strong> — Each stage (Lexical, Compilation, Execution, Expectations) shows pass/fail. Click a chip to see details.</li>
+                <li>Download or copy the <strong>Generated Files</strong> from the results panel.</li>
+            </ol>
+        </div>
+
+        <!-- Configuration Reference -->
+        <div class="section">
+            <h2>Configuration Reference</h2>
+            <p>Key properties in <code>application.yaml</code>:</p>
+            <table>
+                <thead>
+                    <tr><th>Property</th><th>Default</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>app.repl.enabled</code></td>
+                        <td><code>false</code></td>
+                        <td>Enable the interactive CLI REPL. When <code>true</code>, the app starts a terminal-based chat loop instead of running as a web-only server.</td>
+                    </tr>
+                    <tr>
+                        <td><code>apex.knowledge.enabled</code></td>
+                        <td><code>false</code></td>
+                        <td>Enable the RAG vector store for semantic search over APEX documentation. Requires an embedding model API.</td>
+                    </tr>
+                    <tr>
+                        <td><code>apex.knowledge.project-root</code></td>
+                        <td><code>../apex-rules-engine</code></td>
+                        <td>Path to the APEX rules engine project for knowledge ingestion.</td>
+                    </tr>
+                    <tr>
+                        <td><code>spring.ai.openai-sdk.chat.options.model</code></td>
+                        <td><code>gpt-4o</code></td>
+                        <td>The LLM model to use for generation and chat.</td>
+                    </tr>
+                    <tr>
+                        <td><code>server.port</code></td>
+                        <td><code>8080</code></td>
+                        <td>Web server port (standard Spring Boot property).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Running the Application -->
+        <div class="section">
+            <h2>Running the Application</h2>
+
+            <h3>Web UI (default)</h3>
+            <pre># Set your API key
+export OPENAI_API_KEY=your-key-here   # Linux/macOS
+$env:OPENAI_API_KEY="your-key-here"   # Windows PowerShell
+
+# Start the server
+./mvnw spring-boot:run
+
+# Open http://localhost:8080/home</pre>
+
+            <h3>CLI REPL (optional)</h3>
+            <pre># Enable the REPL via command line
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--app.repl.enabled=true"
+
+# Or via standalone jar
+java -jar target/apex-ai-agent-0.0.1-SNAPSHOT.jar --app.repl.enabled=true</pre>
+
+            <h3>Build a Standalone Jar</h3>
+            <pre>./mvnw clean package -DskipTests
+java -jar target/apex-ai-agent-0.0.1-SNAPSHOT.jar</pre>
+        </div>
+
+        <!-- Tech Stack -->
+        <div class="section">
+            <h2>Tech Stack</h2>
+            <table>
+                <thead>
+                    <tr><th>Component</th><th>Version</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Java</td><td>23</td></tr>
+                    <tr><td>Spring Boot</td><td>4.0.2</td></tr>
+                    <tr><td>Spring AI</td><td>2.0.0-M2</td></tr>
+                    <tr><td>spring-ai-agent-utils</td><td>0.4.2</td></tr>
+                    <tr><td>LLM</td><td>OpenAI GPT-4o</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            APEX Rules Generator &middot; Powered by Spring AI + GPT-4o
+            &middot; <a href="/home" style="color: var(--primary); text-decoration: none;">Back to Generator</a>
+        </footer>
+    </div>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 Author 
 
-A detailed guide to how the **codingagent** project works, how it integrates with the **apex-rules-engine**, and how the hybrid RAG knowledge system enables accurate APEX YAML generation.
+A detailed guide to how the **apex-ai-agent** project works, how it integrates with the **apex-rules-engine**, and how the hybrid RAG knowledge system enables accurate APEX YAML generation.
 
 ---
 
@@ -26,7 +26,7 @@ A detailed guide to how the **codingagent** project works, how it integrates wit
 
 ## Overview
 
-The **codingagent** is an AI-powered coding assistant built on Spring Boot and Spring AI. Its primary mission is to **generate, validate, and execute APEX YAML business rule configurations** from natural language requirements.
+The **apex-ai-agent** is an AI-powered coding assistant built on Spring Boot and Spring AI. Its primary mission is to **generate, validate, and execute APEX YAML business rule configurations** from natural language requirements.
 
 It works by giving an LLM (GPT-4o) access to a curated set of tools that can:
 - Look up APEX syntax rules and templates
@@ -60,8 +60,8 @@ The LLM orchestrates these tools autonomously, following a strict plan → retri
 ## Project Structure
 
 ```
-codingagent/
-├── src/main/java/dev/mars/codingagent/
+apex-ai-agent/
+├── src/main/java/dev/mars/apexaiagent/
 │   ├── Application.java                    # Spring Boot entry point, bean wiring
 │   ├── rag/
 │   │   └── ApexKnowledgeIngester.java      # Vector store ingestion pipeline
@@ -384,12 +384,12 @@ To force re-ingestion, delete `knowledge/apex-vector-store.json` and restart. Or
 
 ## Interaction with apex-rules-engine
 
-The codingagent interacts with the apex-rules-engine project at **three levels**:
+The apex-ai-agent interacts with the apex-rules-engine project at **three levels**:
 
 ### Level 1: Compile-Time Library Dependencies
 
 ```xml
-<!-- In codingagent/pom.xml -->
+<!-- In apex-ai-agent/pom.xml -->
 <dependency>
     <groupId>com.apex</groupId>
     <artifactId>apex-core</artifactId>
@@ -402,7 +402,7 @@ The codingagent interacts with the apex-rules-engine project at **three levels**
 </dependency>
 ```
 
-These give the codingagent access to:
+These give the apex-ai-agent access to:
 - **APEX Compiler** — `ApexCompileTool` calls the real APEX compiler to validate YAML syntax, check for unknown keywords, verify SpEL expressions, and compile rule definitions into executable form
 - **APEX Core Engine** — `ApexExecuteTool` calls the real engine to execute compiled rules against JSON fact data, returning per-rule results (triggered, message, severity, pass/fail)
 
@@ -427,7 +427,7 @@ The `knowledge/apex-syntax-compact.yaml` file is a curated APEX syntax reference
 The `ApexKnowledgeIngester` **reads files directly from the apex-rules-engine project directory** at startup:
 
 ```
-codingagent/                     apex-rules-engine/
+apex-ai-agent/                     apex-rules-engine/
     │                                │
     │  ← reads .md files from →      ├── docs/*.md
     │  ← reads .yaml files from →    ├── apex-playground/examples/**/*.yaml
@@ -440,7 +440,7 @@ codingagent/                     apex-rules-engine/
 The default location assumes both projects are siblings:
 ```
 parent-directory/
-├── codingagent/          ← this project
+├── apex-ai-agent/          ← this project
 └── apex-rules-engine/   ← the rules engine project
 ```
 
@@ -591,7 +591,7 @@ apex:
 ### Build
 
 ```bash
-cd codingagent
+cd apex-ai-agent
 ./mvnw clean package
 ```
 

@@ -1,8 +1,8 @@
-# Copilot Instructions for Coding Agent
+# Copilot Instructions for APEX AI Agent
 
 ## Project Overview
 
-This is a CLI-powered coding assistant built with **Spring Boot 4.0.2** and **Spring AI 2.0.0-M2**. The entire agent lives in a single `Application.java` file (~67 lines) that wires up an LLM with file system tools, grep, glob, and shell access to create an interactive REPL agent capable of reading, searching, and reasoning about codebases.
+This is an AI-powered APEX rules agent built with **Spring Boot 4.0.2** and **Spring AI 2.0.0-M2**. It generates, validates, and executes APEX YAML business rule configurations from natural language requirements, using an LLM with file system tools, grep, glob, shell access, and specialized APEX tools.
 
 ## Tech Stack
 
@@ -26,7 +26,7 @@ This is a CLI-powered coding assistant built with **Spring Boot 4.0.2** and **Sp
 
 ## Code Conventions
 
-- Package root: `dev.mark.codingagent`
+- Package root: `dev.mars.apexaiagent`
 - Single-class application pattern — keep it concise and self-contained.
 - Use Spring AI's fluent `ChatClient.Builder` API for configuration.
 - Use text blocks (`"""`) for multi-line strings like system prompts.
