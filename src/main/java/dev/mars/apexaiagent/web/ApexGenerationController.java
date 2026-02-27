@@ -1,6 +1,9 @@
 package dev.mars.apexaiagent.web;
 
+import dev.mars.apexaiagent.orchestration.ApexDescriptionService;
 import dev.mars.apexaiagent.orchestration.ApexGenerationService;
+import dev.mars.apexaiagent.orchestration.DescriptionRequest;
+import dev.mars.apexaiagent.orchestration.DescriptionResult;
 import dev.mars.apexaiagent.orchestration.GenerationRequest;
 import dev.mars.apexaiagent.orchestration.GenerationResult;
 import dev.mars.apexaiagent.orchestration.GenerationResult.GeneratedFile;
@@ -27,11 +30,14 @@ public class ApexGenerationController {
     private static final long JOB_TTL_MILLIS = TimeUnit.HOURS.toMillis(1);
 
     private final ApexGenerationService generationService;
+    private final ApexDescriptionService descriptionService;
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private final ConcurrentHashMap<String, JobEntry> jobs = new ConcurrentHashMap<>();
 
-    public ApexGenerationController(ApexGenerationService generationService) {
+    public ApexGenerationController(ApexGenerationService generationService,
+                                    ApexDescriptionService descriptionService) {
         this.generationService = generationService;
+        this.descriptionService = descriptionService;
     }
 
     @PreDestroy
@@ -107,6 +113,64 @@ public class ApexGenerationController {
                 "status", "running",
                 "message", "Generation started. Poll /api/apex/status/" + jobId + " for results."
         ));
+    }
+
+    /**
+     * Synchronously derive a plain-language business description from an APEX YAML
+     * configuration and optional sample JSON data.
+     *
+     * POST body:
+     * {
+     *   "yamlContent": "...",      // required — the APEX YAML to describe
+     *   "sampleJson": "...",       // optional — JSON facts to trace rule outcomes
+     *   "focusArea": "..."         // optional — e.g. "explain the discount rules only"
+     * }
+     */
+    @PostMapping("/describe")
+    public ResponseEntity<Map<String, Object>> describe(@RequestBody DescribeRequest request) {
+        log.debug("POST /api/apex/describe — yamlContent length={}, hasSampleJson={}, focusArea='{}'",
+                request.yamlContent() != null ? request.yamlContent().length() : 0,
+                request.sampleJson() != null && !request.sampleJson().isBlank(),
+                request.focusArea());
+
+        if (request.yamlContent() == null || request.yamlContent().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "yamlContent is required and must not be blank"));
+        }
+
+        DescriptionRequest descRequest = DescriptionRequest.of(
+                request.yamlContent(), request.sampleJson(), request.focusArea());
+
+        log.info("Describing APEX YAML (request {})", descRequest.requestId());
+
+        DescriptionResult result = descriptionService.describe(descRequest);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("requestId", result.requestId());
+        response.put("success", result.success());
+
+        if (result.success()) {
+            response.put("summary", result.summary());
+            response.put("description", result.description());
+            response.put("dataFieldsIdentified", result.dataFieldsIdentified());
+
+            List<Map<String, Object>> ruleList = new ArrayList<>();
+            for (DescriptionResult.RuleDescription rule : result.rules()) {
+                Map<String, Object> r = new LinkedHashMap<>();
+                r.put("ruleId", rule.ruleId());
+                r.put("ruleName", rule.ruleName());
+                r.put("businessMeaning", rule.businessMeaning());
+                r.put("condition", rule.condition());
+                r.put("severity", rule.severity());
+                r.put("exampleOutcomes", rule.exampleOutcomes());
+                ruleList.add(r);
+            }
+            response.put("rules", ruleList);
+        } else {
+            response.put("error", result.error());
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -292,6 +356,12 @@ public class ApexGenerationController {
             String requirements,
             String dataStructure,
             String hints
+    ) {}
+
+    public record DescribeRequest(
+            String yamlContent,
+            String sampleJson,
+            String focusArea
     ) {}
 
     private record JobEntry(

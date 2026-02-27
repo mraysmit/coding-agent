@@ -541,44 +541,225 @@
             color: var(--primary-hover);
             text-decoration: underline;
         }
+
+        /* ── Mode Tab Switcher ── */
+        .mode-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .mode-tab {
+            flex: 1;
+            cursor: pointer;
+            border: none;
+            border-radius: 7px;
+            padding: 0.6rem 1rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .mode-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+        }
+
+        .mode-tab:not(.active):hover {
+            color: var(--text);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        /* ── Describe Results ── */
+        .describe-summary-card {
+            background: rgba(99, 102, 241, 0.07);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 10px;
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.65;
+            color: var(--text);
+        }
+
+        .describe-narrative {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: var(--text);
+            white-space: pre-wrap;
+            margin-bottom: 1rem;
+        }
+
+        .field-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .field-badge {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            color: var(--primary-hover);
+        }
+
+        .rule-desc-card {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+
+        .rule-desc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.55rem 0.85rem;
+            background: rgba(99, 102, 241, 0.06);
+            border-bottom: 1px solid var(--border);
+            gap: 0.5rem;
+        }
+
+        .rule-desc-id {
+            font-family: monospace;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .rule-desc-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--primary-hover);
+            flex: 1;
+        }
+
+        .rule-desc-body {
+            padding: 0.75rem 0.85rem;
+        }
+
+        .rule-desc-meaning {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-desc-condition {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.3rem 0.6rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .rule-desc-outcomes {
+            margin-top: 0.4rem;
+        }
+
+        .rule-desc-outcome {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            padding: 0.25rem 0;
+            border-left: 2px solid var(--border);
+            padding-left: 0.6rem;
+            margin-top: 0.2rem;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>APEX AI Rules Generator</h1>
-            <p>Generate validated APEX YAML business rules from natural language requirements</p>
+            <h1>APEX AI Rules</h1>
+            <p>Generate APEX YAML rules from requirements &mdash; or describe existing rules in plain English</p>
             <p style="margin-top: 0.6rem;"><a href="/home/help" style="color: var(--primary); text-decoration: none; font-size: 0.88rem; font-weight: 500;">Help &amp; Documentation &rarr;</a></p>
         </header>
 
-        <!-- Input Form -->
-        <div class="form-section">
-            <div class="field-group">
-                <label for="requirements">Business Requirements</label>
-                <textarea id="requirements" placeholder="Describe the business rules you want to generate...&#10;&#10;Example: Create a loan eligibility rule. Applicants must be at least 18 years old, have a credit score above 650, and annual income exceeding $30,000. If all conditions are met, the applicant is eligible for a standard loan."></textarea>
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tab-generate" onclick="switchMode('generate')">&#9889; Generate Rules</button>
+            <button class="mode-tab" id="tab-describe" onclick="switchMode('describe')">&#128196; Describe Rules</button>
+        </div>
+
+        <!-- ── GENERATE MODE ── -->
+        <div id="generate-mode-section">
+            <div class="form-section">
+                <div class="field-group">
+                    <label for="requirements">Business Requirements</label>
+                    <textarea id="requirements" placeholder="Describe the business rules you want to generate...&#10;&#10;Example: Create a loan eligibility rule. Applicants must be at least 18 years old, have a credit score above 650, and annual income exceeding $30,000. If all conditions are met, the applicant is eligible for a standard loan."></textarea>
+                </div>
+
+                <div class="field-group">
+                    <label for="dataStructure">JSON Data Structure
+                        <span class="sample-link" onclick="loadSample()">Load sample</span>
+                    </label>
+                    <textarea id="dataStructure" class="data-input" placeholder='Describe or paste the JSON structure your rules will evaluate...&#10;&#10;Example:&#10;{&#10;  "applicantAge": 25,&#10;  "creditScore": 720,&#10;  "annualIncome": 55000,&#10;  "existingLoans": 1&#10;}'></textarea>
+                </div>
+
+                <div class="field-group">
+                    <label for="hints">Hints (optional, comma-separated)</label>
+                    <input class="hint-input" id="hints" type="text" placeholder="e.g., eligibility, classification, score-based" />
+                </div>
             </div>
 
-            <div class="field-group">
-                <label for="dataStructure">JSON Data Structure
-                    <span class="sample-link" onclick="loadSample()">Load sample</span>
-                </label>
-                <textarea id="dataStructure" class="data-input" placeholder='Describe or paste the JSON structure your rules will evaluate...&#10;&#10;Example:&#10;{&#10;  "applicantAge": 25,&#10;  "creditScore": 720,&#10;  "annualIncome": 55000,&#10;  "existingLoans": 1&#10;}'></textarea>
-            </div>
-
-            <div class="field-group">
-                <label for="hints">Hints (optional, comma-separated)</label>
-                <input class="hint-input" id="hints" type="text" placeholder="e.g., eligibility, classification, score-based" />
+            <div class="actions">
+                <button class="btn-primary" id="generateBtn" onclick="submitGeneration()">
+                    Generate Rules
+                </button>
+                <button class="btn-secondary" onclick="clearForm()">Clear</button>
             </div>
         </div>
 
-        <div class="actions">
-            <button class="btn-primary" id="generateBtn" onclick="submitGeneration()">
-                Generate Rules
-            </button>
-            <button class="btn-secondary" onclick="clearForm()">Clear</button>
+        <!-- ── DESCRIBE MODE ── -->
+        <div id="describe-mode-section" style="display:none;">
+            <div class="form-section">
+                <div class="field-group">
+                    <label for="descYaml">APEX YAML Configuration
+                        <span class="sample-link" onclick="loadDescribeSample()">Load sample</span>
+                    </label>
+                    <textarea id="descYaml" style="min-height: 220px; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 0.85rem;" placeholder="Paste your APEX YAML configuration here..."></textarea>
+                </div>
+
+                <div class="field-group">
+                    <label for="descJson">Sample JSON Data <span style="font-weight:400; text-transform:none; letter-spacing:0; color: var(--text-muted);">(optional &mdash; enables outcome tracing)</span></label>
+                    <textarea id="descJson" class="data-input" placeholder='Optionally paste sample JSON data to trace which rules would pass or fail...&#10;&#10;Example:&#10;{&#10;  "orderTotal": 250,&#10;  "customerTier": "VIP"&#10;}'></textarea>
+                </div>
+
+                <div class="field-group">
+                    <label for="descFocus">Focus Area <span style="font-weight:400; text-transform:none; letter-spacing:0; color: var(--text-muted);">(optional)</span></label>
+                    <input class="hint-input" id="descFocus" type="text" placeholder="e.g., explain only the ERROR severity rules" />
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn-primary" id="describeBtn" onclick="submitDescribe()">
+                    Describe Rules
+                </button>
+                <button class="btn-secondary" onclick="clearDescribeForm()">Clear</button>
+            </div>
         </div>
 
-        <!-- Results Area -->
+        <!-- ── GENERATE RESULTS ── -->
         <div id="status-area">
             <div id="status-banner" class="status-banner status-running">
                 <div class="spinner" id="status-spinner"></div>
@@ -618,8 +799,38 @@
             </div>
         </div>
 
+        <!-- ── DESCRIBE RESULTS ── -->
+        <div id="describe-results-area" style="display:none;">
+            <div id="describe-status-banner" class="status-banner status-running">
+                <div class="spinner" id="describe-spinner"></div>
+                <span id="describe-status-text">Analysing rules...</span>
+            </div>
+
+            <div id="describe-results-container" style="display:none;">
+                <div class="result-section" id="desc-summary-section" style="display:none;">
+                    <div class="section-title">Overview</div>
+                    <div class="describe-summary-card" id="desc-summary-text"></div>
+                </div>
+
+                <div class="result-section" id="desc-narrative-section" style="display:none;">
+                    <div class="section-title">Business Description</div>
+                    <div class="describe-narrative" id="desc-narrative-text"></div>
+                </div>
+
+                <div class="result-section" id="desc-fields-section" style="display:none;">
+                    <div class="section-title">Data Fields Identified</div>
+                    <div class="field-badges" id="desc-fields-container"></div>
+                </div>
+
+                <div class="result-section" id="desc-rules-section" style="display:none;">
+                    <div class="section-title">Rule Breakdown</div>
+                    <div id="desc-rules-container"></div>
+                </div>
+            </div>
+        </div>
+
         <footer>
-            APEX AI Rules Generator &middot; Powered by Spring AI + GPT-4o
+            APEX AI Rules &middot; Powered by Spring AI + GPT-4o
             &middot; <a href="/home/help" style="color: var(--primary); text-decoration: none;">Help</a>
         </footer>
     </div>
@@ -1046,6 +1257,186 @@
                 panel.classList.add('visible');
                 if (chip) chip.classList.add('expanded');
             }
+        }
+
+        // ---- Mode Switching ----
+
+        let currentMode = 'generate';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('generate-mode-section').style.display = mode === 'generate' ? 'block' : 'none';
+            document.getElementById('describe-mode-section').style.display  = mode === 'describe'  ? 'block' : 'none';
+            document.getElementById('status-area').style.display         = 'none';
+            document.getElementById('describe-results-area').style.display = 'none';
+
+            document.getElementById('tab-generate').classList.toggle('active', mode === 'generate');
+            document.getElementById('tab-describe').classList.toggle('active',  mode === 'describe');
+        }
+
+        // ---- Describe Mode ----
+
+        function loadDescribeSample() {
+            document.getElementById('descYaml').value =
+`metadata:
+  id: "discount-tiers"
+  name: "Order Discount Rules"
+  version: "1.0"
+  description: "Rules for applying discounts based on order total and customer tier."
+  type: "rule-config"
+  author: "Generated by APEX AI Agent"
+
+rules:
+  - id: "rule-high-discount"
+    name: "High Discount Rule"
+    condition: "#orderTotal > 500"
+    message: "Apply a 20% discount for orders over $500."
+    severity: "INFO"
+
+  - id: "rule-medium-discount"
+    name: "Medium Discount Rule"
+    condition: "#orderTotal > 100 && #orderTotal <= 500"
+    message: "Apply a 10% discount for orders over $100."
+    severity: "INFO"
+
+  - id: "rule-vip-discount"
+    name: "VIP Discount Rule"
+    condition: "#customerTier.equals('VIP')"
+    message: "VIP customer receives at least 15% discount."
+    severity: "INFO"`;
+
+            document.getElementById('descJson').value = JSON.stringify({
+                orderTotal: 250,
+                customerTier: "VIP",
+                itemCount: 5,
+                isReturningCustomer: true
+            }, null, 2);
+        }
+
+        function clearDescribeForm() {
+            document.getElementById('descYaml').value  = '';
+            document.getElementById('descJson').value  = '';
+            document.getElementById('descFocus').value = '';
+            document.getElementById('describe-results-area').style.display = 'none';
+        }
+
+        async function submitDescribe() {
+            const yamlContent = document.getElementById('descYaml').value.trim();
+            const sampleJson  = document.getElementById('descJson').value.trim();
+            const focusArea   = document.getElementById('descFocus').value.trim();
+
+            if (!yamlContent) {
+                alert('Please paste an APEX YAML configuration.');
+                return;
+            }
+
+            const btn = document.getElementById('describeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analysing...';
+
+            document.getElementById('describe-results-area').style.display = 'block';
+            document.getElementById('describe-results-container').style.display = 'none';
+
+            const banner = document.getElementById('describe-status-banner');
+            banner.className = 'status-banner status-running';
+            document.getElementById('describe-spinner').style.display = 'block';
+            document.getElementById('describe-status-text').textContent = 'Analysing APEX rules...';
+
+            try {
+                const response = await fetch('/api/apex/describe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        yamlContent,
+                        sampleJson:  sampleJson  || null,
+                        focusArea:   focusArea   || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showDescribeResults(data);
+                } else {
+                    showDescribeError(data.error || 'Description failed');
+                }
+            } catch (err) {
+                showDescribeError('Request failed: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Describe Rules';
+            }
+        }
+
+        function showDescribeError(message) {
+            const banner = document.getElementById('describe-status-banner');
+            banner.className = 'status-banner status-failed';
+            document.getElementById('describe-spinner').style.display = 'none';
+            document.getElementById('describe-status-text').textContent = 'Failed: ' + message;
+        }
+
+        function showDescribeResults(data) {
+            const banner = document.getElementById('describe-status-banner');
+            banner.className = 'status-banner status-completed';
+            document.getElementById('describe-spinner').style.display = 'none';
+            document.getElementById('describe-status-text').textContent =
+                `Description complete \u2014 ${(data.rules || []).length} rule${(data.rules||[]).length !== 1 ? 's' : ''} explained`;
+
+            // Overview / summary
+            if (data.summary) {
+                document.getElementById('desc-summary-section').style.display = 'block';
+                document.getElementById('desc-summary-text').textContent = data.summary;
+            }
+
+            // Narrative
+            if (data.description) {
+                document.getElementById('desc-narrative-section').style.display = 'block';
+                document.getElementById('desc-narrative-text').textContent = data.description;
+            }
+
+            // Data fields
+            const fields = data.dataFieldsIdentified || [];
+            if (fields.length > 0) {
+                document.getElementById('desc-fields-section').style.display = 'block';
+                const fc = document.getElementById('desc-fields-container');
+                fc.innerHTML = fields.map(f =>
+                    `<span class="field-badge">${escapeHtml(f)}</span>`
+                ).join('');
+            }
+
+            // Per-rule cards
+            const rules = data.rules || [];
+            if (rules.length > 0) {
+                document.getElementById('desc-rules-section').style.display = 'block';
+                const rc = document.getElementById('desc-rules-container');
+                rc.innerHTML = rules.map(rule => {
+                    const sev    = (rule.severity || 'INFO').toUpperCase();
+                    let sevCls   = 'info';
+                    if (sev === 'WARNING' || sev === 'WARN') sevCls = 'warn';
+                    else if (sev === 'ERROR')    sevCls = 'error';
+                    else if (sev === 'CRITICAL') sevCls = 'critical';
+
+                    const outcomes = (rule.exampleOutcomes || []).map(o =>
+                        `<div class="rule-desc-outcome">${escapeHtml(o)}</div>`
+                    ).join('');
+
+                    return `
+                    <div class="rule-desc-card">
+                        <div class="rule-desc-header">
+                            <span class="rule-desc-name">${escapeHtml(rule.ruleName || rule.ruleId || '')}</span>
+                            <span class="rule-desc-id">${escapeHtml(rule.ruleId || '')}</span>
+                            <span class="severity-badge ${sevCls}">${escapeHtml(sev)}</span>
+                        </div>
+                        <div class="rule-desc-body">
+                            <div class="rule-desc-meaning">${escapeHtml(rule.businessMeaning || '')}</div>
+                            ${rule.condition ? `<div class="rule-desc-condition">condition: ${escapeHtml(rule.condition)}</div>` : ''}
+                            ${outcomes ? `<div class="rule-desc-outcomes">${outcomes}</div>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            document.getElementById('describe-results-container').style.display = 'block';
         }
     </script>
 </body>

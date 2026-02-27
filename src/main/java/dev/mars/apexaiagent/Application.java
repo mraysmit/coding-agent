@@ -10,6 +10,8 @@ import dev.mars.apexaiagent.tools.ApexExpectationTool;
 import dev.mars.apexaiagent.tools.ApexKnowledgeSearchTool;
 import dev.mars.apexaiagent.tools.ApexSyntaxTool;
 import dev.mars.apexaiagent.tools.ApexExampleRetrievalTool;
+import dev.mars.apexaiagent.orchestration.ApexDescribeCommand;
+import dev.mars.apexaiagent.orchestration.ApexDescriptionService;
 import dev.mars.apexaiagent.orchestration.ApexGenerateCommand;
 import dev.mars.apexaiagent.orchestration.ApexGenerationService;
 import dev.mars.apexaiagent.rag.ApexKnowledgeIngester;
@@ -67,7 +69,15 @@ public class Application {
 	}
 
 	@Bean
+	ApexDescriptionService apexDescriptionService(ChatModel chatModel) {
+		return ApexDescriptionService.builder()
+				.chatModel(chatModel)
+				.build();
+	}
+
+	@Bean
 	ChatClient chatClient(ChatClient.Builder chatClientBuilder, ApexGenerationService apexGenerationService,
+						  ApexDescriptionService apexDescriptionService,
 						  @org.springframework.lang.Nullable SimpleVectorStore apexVectorStore) {
 		var tools = new java.util.ArrayList<Object>();
 		tools.add(FileSystemTools.builder().build());
@@ -83,6 +93,7 @@ public class Application {
 			tools.add(ApexKnowledgeSearchTool.builder().vectorStore(apexVectorStore).build());
 		}
 		tools.add(new ApexGenerateCommand(apexGenerationService));
+		tools.add(new ApexDescribeCommand(apexDescriptionService));
 
 		return chatClientBuilder.clone()
 				.defaultSystem("""
@@ -94,6 +105,10 @@ public class Application {
                     and generating APEX YAML business rule configurations. When the user
                     asks to create or generate APEX rules, use the GenerateApexRules tool
                     which runs the full generation pipeline.
+
+                    When the user wants to understand, explain, or document existing APEX
+                    YAML rules in plain business terms, use the DescribeApexRules tool.
+                    This works in the reverse direction: YAML + optional sample data → business description.
 
                     You have semantic search over the APEX knowledge base. Use
                     ApexSemanticSearch to find documentation and examples by meaning.

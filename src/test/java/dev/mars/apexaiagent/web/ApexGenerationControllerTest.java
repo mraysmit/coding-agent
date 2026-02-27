@@ -1,7 +1,10 @@
 package dev.mars.apexaiagent.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.mars.apexaiagent.orchestration.ApexDescriptionService;
 import dev.mars.apexaiagent.orchestration.ApexGenerationService;
+import dev.mars.apexaiagent.orchestration.DescriptionRequest;
+import dev.mars.apexaiagent.orchestration.DescriptionResult;
 import dev.mars.apexaiagent.orchestration.GenerationRequest;
 import dev.mars.apexaiagent.orchestration.GenerationResult;
 import dev.mars.apexaiagent.orchestration.GenerationResult.GeneratedFile;
@@ -32,11 +35,13 @@ class ApexGenerationControllerTest {
     MockMvc mockMvc;
     ObjectMapper objectMapper = new ObjectMapper();
     ApexGenerationService generationService;
+    ApexDescriptionService descriptionService;
 
     @BeforeEach
     void setUp() {
-        generationService = mock(ApexGenerationService.class);
-        ApexGenerationController controller = new ApexGenerationController(generationService);
+        generationService  = mock(ApexGenerationService.class);
+        descriptionService = mock(ApexDescriptionService.class);
+        ApexGenerationController controller = new ApexGenerationController(generationService, descriptionService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
@@ -339,6 +344,103 @@ class ApexGenerationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("completed"))
                 .andExpect(jsonPath("$.validationReport.ruleResults").doesNotExist());
+    }
+
+    // ---- POST /api/apex/describe ----
+
+    @Test
+    void describe_returnsSuccessfulDescription() throws Exception {
+        DescriptionResult descResult = DescriptionResult.success(
+                "desc-test-123",
+                "This rule set applies discounts based on order value and customer tier.",
+                "Orders over $500 receive 20% off. Orders over $100 receive 10% off. VIP customers always get 15%.",
+                List.of(
+                        new DescriptionResult.RuleDescription(
+                                "rule-high-discount", "High Discount Rule",
+                                "Customers whose order exceeds $500 qualify for a 20% discount.",
+                                "#orderTotal > 500", "INFO",
+                                List.of("With orderTotal=250: FAILS — order is below $500")
+                        )
+                ),
+                List.of("orderTotal", "customerTier")
+        );
+
+        when(descriptionService.describe(any(DescriptionRequest.class))).thenReturn(descResult);
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "yamlContent", "metadata:\n  id: discount-tiers\n  type: rule-config\nrules: []"
+        ));
+
+        mockMvc.perform(post("/api/apex/describe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.summary").isString())
+                .andExpect(jsonPath("$.description").isString())
+                .andExpect(jsonPath("$.dataFieldsIdentified").isArray())
+                .andExpect(jsonPath("$.dataFieldsIdentified", hasSize(2)))
+                .andExpect(jsonPath("$.dataFieldsIdentified[0]").value("orderTotal"))
+                .andExpect(jsonPath("$.rules").isArray())
+                .andExpect(jsonPath("$.rules", hasSize(1)))
+                .andExpect(jsonPath("$.rules[0].ruleId").value("rule-high-discount"))
+                .andExpect(jsonPath("$.rules[0].businessMeaning").isString())
+                .andExpect(jsonPath("$.rules[0].condition").value("#orderTotal > 500"))
+                .andExpect(jsonPath("$.rules[0].severity").value("INFO"))
+                .andExpect(jsonPath("$.rules[0].exampleOutcomes").isArray());
+    }
+
+    @Test
+    void describe_withSampleJsonAndFocus_passesThemToService() throws Exception {
+        DescriptionResult descResult = DescriptionResult.success(
+                "desc-focus-test", "VIP rule summary.", "VIP rule detail.",
+                List.of(), List.of("customerTier")
+        );
+        when(descriptionService.describe(any(DescriptionRequest.class))).thenReturn(descResult);
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "yamlContent",  "metadata:\n  id: test\nrules: []",
+                "sampleJson",   "{\"customerTier\": \"VIP\"}",
+                "focusArea",    "explain only VIP rules"
+        ));
+
+        mockMvc.perform(post("/api/apex/describe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(descriptionService).describe(any(DescriptionRequest.class));
+    }
+
+    @Test
+    void describe_blankYaml_returns400() throws Exception {
+        String body = objectMapper.writeValueAsString(Map.of(
+                "sampleJson", "{\"x\": 1}"
+        ));
+
+        mockMvc.perform(post("/api/apex/describe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("yamlContent")));
+    }
+
+    @Test
+    void describe_serviceFailure_returnsErrorInBody() throws Exception {
+        when(descriptionService.describe(any(DescriptionRequest.class)))
+                .thenReturn(DescriptionResult.failed("desc-fail", "Model returned empty response"));
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "yamlContent", "metadata:\n  id: test\nrules: []"
+        ));
+
+        mockMvc.perform(post("/api/apex/describe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value(containsString("Model returned empty response")));
     }
 
     // ---- Helpers ----
