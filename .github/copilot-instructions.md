@@ -1,4 +1,4 @@
-# Copilot Instructions for APEX AI Agent
+# Copilot Instructions for APEX Coding Agent
 
 ## Project Overview
 

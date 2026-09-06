@@ -1,4 +1,4 @@
-# APEX AI Agent
+# APEX Coding Agent
 
 An AI-powered APEX rules agent with both a **Web UI** and a **CLI REPL**. Generate, validate, and execute APEX YAML business rule configurations from natural language requirements.
 
@@ -34,7 +34,7 @@ app:
 ```
 
 ```
-🤖 APEX AI Agent Ready. Ask me anything about your codebase!
+🤖 APEX Coding Agent Ready. Ask me anything about your codebase!
 
 > explain the authentication flow
 > find all usages of UserService

@@ -29,7 +29,7 @@ class ReplTests {
 
 		Application.runRepl(chatClient, scanner, new PrintStream(output));
 
-		assertThat(output.toString()).contains("APEX AI Agent Ready");
+		assertThat(output.toString()).contains("APEX Coding Agent Ready");
 		verify(chatClient, never()).prompt(anyString());
 	}
 

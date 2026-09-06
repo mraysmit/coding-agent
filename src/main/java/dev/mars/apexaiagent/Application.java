@@ -137,7 +137,7 @@ public class Application {
 	}
 
 	static void runRepl(ChatClient chatClient, Scanner scanner, PrintStream out) {
-		out.println("🤖 APEX AI Agent Ready. Ask me anything about your codebase!");
+		out.println("🤖 APEX Coding Agent Ready. Ask me anything about your codebase!");
 
 		while (true) {
 			out.print("\n> ");
